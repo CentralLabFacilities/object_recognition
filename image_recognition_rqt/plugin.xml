@@ -1,0 +1,47 @@
+<library path="src">
+  <class name="Annotation Plugin" type="image_recognition_rqt.annotation.AnnotationPlugin" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      A Python GUI plugin for annotating image regions
+    </description>
+    <qtgui>
+        <group>
+            <label>Image recognition</label>
+            <icon type="theme">folder</icon>
+            <statustip>Plugins related to image recogition.</statustip>
+        </group>
+      <label>ROI Annotation</label>
+      <icon type="theme">system-help</icon>
+      <statustip>Annotate regions in images and write the result to disk and/or call the Annotate service.</statustip>
+    </qtgui>
+  </class>
+  <class name="Test Plugin" type="image_recognition_rqt.test.TestPlugin" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      A Python GUI plugin for testing the image_recognition_msgs interface
+    </description>
+    <qtgui>
+        <group>
+            <label>Image recognition</label>
+            <icon type="theme">folder</icon>
+            <statustip>Plugins related to image recogition.</statustip>
+        </group>
+      <label>Image recognition test</label>
+      <icon type="theme">system-help</icon>
+      <statustip>Test image recognition using an sensor_msgs/Image input feed.</statustip>
+    </qtgui>
+  </class>
+  <class name="Manual Plugin" type="image_recognition_rqt.manual.ManualPlugin" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      A Python GUI for manual image recognition
+    </description>
+    <qtgui>
+        <group>
+            <label>Image recognition</label>
+            <icon type="theme">folder</icon>
+            <statustip>Plugins related to image recogition.</statustip>
+        </group>
+      <label>Manual image recognition</label>
+      <icon type="theme">system-help</icon>
+      <statustip>Manual image recognition service.</statustip>
+    </qtgui>
+  </class>
+</library>
