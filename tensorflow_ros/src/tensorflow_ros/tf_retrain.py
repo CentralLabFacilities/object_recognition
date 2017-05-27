@@ -184,6 +184,7 @@ def create_image_lists(image_dir, testing_percentage, validation_percentage):
     A dictionary containing an entry for each label subfolder, with images split
     into training, testing, and validation sets within each label.
   """
+  tf.logging.info('creating image list, test: %d, val: %d',testing_percentage,validation_percentage)
   if not gfile.Exists(image_dir):
     print("Image directory '" + image_dir + "' not found.")
     return None
@@ -236,11 +237,22 @@ def create_image_lists(image_dir, testing_percentage, validation_percentage):
                           (MAX_NUM_IMAGES_PER_CLASS + 1)) *
                          (100.0 / MAX_NUM_IMAGES_PER_CLASS))
       if percentage_hash < validation_percentage:
+	#tf.logging.info("append image to validation list, %d")
         validation_images.append(base_name)
       elif percentage_hash < (testing_percentage + validation_percentage):
         testing_images.append(base_name)
+	#tf.logging.info("append image to test list")
       else:
+	#tf.logging.info("append image to train list")
         training_images.append(base_name)
+
+    # check if testing or validation image list is empty
+    if not validation_images:
+	tf.logging.info("No images in the category validation. Take first item from training set.")
+	validation_images.append(training_images.pop(0))
+    if not testing_images:
+	tf.logging.info("No images in the category testing. Take first item from training set.")
+	testing_images.append(training_images.pop(0))
     result[label_name] = {
         'dir': dir_name,
         'training': training_images,
@@ -299,6 +311,7 @@ def get_bottleneck_path(image_lists, label_name, index, bottleneck_dir,
   Returns:
     File system path string to an image that meets the requested parameters.
   """
+  "tf.logging.info('Getting bottleneck path now, %d',index)"
   return get_image_path(image_lists, label_name, index, bottleneck_dir,
                         category) + '.txt'
 
@@ -577,6 +590,7 @@ def get_random_distorted_bottlenecks(
     label_index = random.randrange(class_count)
     label_name = list(image_lists.keys())[label_index]
     image_index = random.randrange(MAX_NUM_IMAGES_PER_CLASS + 1)
+    tf.logging.info('Getting image path now, %d',image_index)
     image_path = get_image_path(image_lists, label_name, image_index, image_dir,
                                 category)
     if not gfile.Exists(image_path):
@@ -854,7 +868,7 @@ def main(_):
   validation_writer = tf.summary.FileWriter(FLAGS.summaries_dir + '/validation')
 
   # Set up all our weights to their initial default values.
-  init = tf.initialize_all_variables()
+  init = tf.global_variables_initializer()
   sess.run(init)
 
   # Run the training for as many cycles as requested on the command line.
