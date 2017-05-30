@@ -217,42 +217,40 @@ def create_image_lists(image_dir, testing_percentage, validation_percentage):
     training_images = []
     testing_images = []
     validation_images = []
+    # create list of training images containing all images
     for file_name in file_list:
       base_name = os.path.basename(file_name)
-      # We want to ignore anything after '_nohash_' in the file name when
-      # deciding which set to put an image in, the data set creator has a way of
-      # grouping photos that are close variations of each other. For example
-      # this is used in the plant disease data set to group multiple pictures of
-      # the same leaf.
-      hash_name = re.sub(r'_nohash_.*$', '', file_name)
-      # This looks a bit magical, but we need to decide whether this file should
-      # go into the training, testing, or validation sets, and we want to keep
-      # existing files in the same set even if more files are subsequently
-      # added.
-      # To do that, we need a stable way of deciding based on just the file name
-      # itself, so we do a hash of that and then use that to generate a
-      # probability value that we use to assign it.
-      hash_name_hashed = hashlib.sha1(compat.as_bytes(hash_name)).hexdigest()
-      percentage_hash = ((int(hash_name_hashed, 16) %
-                          (MAX_NUM_IMAGES_PER_CLASS + 1)) *
-                         (100.0 / MAX_NUM_IMAGES_PER_CLASS))
-      if percentage_hash < validation_percentage:
-	#tf.logging.info("append image to validation list, %d")
-        validation_images.append(base_name)
-      elif percentage_hash < (testing_percentage + validation_percentage):
-        testing_images.append(base_name)
-	#tf.logging.info("append image to test list")
-      else:
-	#tf.logging.info("append image to train list")
-        training_images.append(base_name)
+      training_images.append(base_name)
+    image_num = len(training_images)
+    training_num = image_num
+    print('Found %d images\n' % (image_num))
+    # choose images for test set and remove them from the training set
+    testing_num = (int) (testing_percentage*image_num/100)
+    print('Take %d images for testing\n' % (testing_num))
+    for i in range (0,testing_num):
+      r = random.randint(0, training_num-1) 
+      testing_images.append(training_images.pop(r))
+      #print('Take image with id %d for test set' % (r))
+      training_num = len(training_images)
+      #print('Remaining images in train set: %d' % (image_num))
+    #choose images for validation set and remove them from the training set
+    validation_num = (int) (validation_percentage*image_num/100)
+    print('Take %d images for validation\n' % (validation_num))
+    for i in range (0,validation_num):
+      r = random.randint(0, training_num-1) 
+      validation_images.append(training_images.pop(r))
+      #print('Take image with id %d for validation set' % (r))
+      training_num = len(training_images)
+      #print('Remaining images in train set: %d' % (image_num))
 
-    # check if testing or validation image list is empty
+    
+    """# check if testing or validation image list is empty
     if not validation_images:
 	tf.logging.info("No images in the category validation. Take first item from training set.")
 	validation_images.append(training_images.pop(0))
     if not testing_images:
 	tf.logging.info("No images in the category testing. Take first item from training set.")
-	testing_images.append(training_images.pop(0))
+	testing_images.append(training_images.pop(0))"""
     result[label_name] = {
         'dir': dir_name,
         'training': training_images,
