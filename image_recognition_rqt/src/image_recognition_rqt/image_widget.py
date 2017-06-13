@@ -58,7 +58,9 @@ class ImageWidget(QWidget):
 
         fgMaskMOG2 = None
         self.pMOG2.apply(self._cv_image, fgMaskMOG2, 0.001)
-        cv2.inRange(fgMaskMOG2, cv2.Scalar(250,250,250), cv2.Scalar(255,255,255), fgMaskMOG2)
+	lower = np.array([250,250,250])
+	upper = np.array([255,255,255])
+        cv2.inRange(fgMaskMOG2, lower, upper, fgMaskMOG2)
         mask = cv2.Mat(fgMaskMOG2.size(), fgMaskMOG2.type())
         mask.setTo(cv2.Scalar(0,0,0))
         cv2.rectangle(mask, cv2.Rect(150,110,300,330), cv2.Scalar(255,255,255), cv2.FILLED)

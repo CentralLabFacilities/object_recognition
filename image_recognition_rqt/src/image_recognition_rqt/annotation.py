@@ -21,6 +21,7 @@ from dialogs import option_dialog, warning_dialog, number_dialog
 
 from image_recognition_util import image_writer
 
+_SUPPORTED_SERVICES = ["image_recognition_msgs/Annotate"]
 
 def _sanitize(label):
     """
@@ -182,13 +183,15 @@ class AnnotationPlugin(Plugin):
         Called when a new sensor_msgs/Image is coming in
         :param msg: The image messaeg
         """
+	#print("try to get image");
         try:
             cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         except CvBridgeError as e:
             rospy.logerr(e)
-
+	#cv_image = cv2.imread('/home/sarah/catkin_ws/dog.jpg')
+	cv2.imwrite('color_img.jpg', cv_image)
         self._image_widget.set_image(cv_image)
-        self._image_widget.get_bbox(self._slider.value())
+        #self._image_widget.get_bbox(self._image_widget.calc_bbox(self._slider.value()))
 
     def trigger_configuration(self):
         """
@@ -237,6 +240,18 @@ class AnnotationPlugin(Plugin):
         instance_settings.set_value("labels", self.labels)
         if self._sub:
             instance_settings.set_value("topic_name", self._sub.name)
+    
+    def _create_service_client(self, srv_name):
+        """
+        Create a service client proxy
+        :param srv_name: Name of the service
+        """
+        if self._srv:
+            self._srv.close()
+
+        if srv_name in rosservice.get_service_list():
+            rospy.loginfo("Creating proxy for service '%s'" % srv_name)
+            self._srv = rospy.ServiceProxy(srv_name, rosservice.get_service_class_by_name(srv_name))
 
     def restore_settings(self, plugin_settings, instance_settings):
         """
@@ -257,5 +272,6 @@ class AnnotationPlugin(Plugin):
         except:
             pass
         self._set_labels(labels)
-
+	self._create_service_client(str(instance_settings.value("service_name", "/image_recognition/my_service")))
         self._create_subscriber(str(instance_settings.value("topic_name", "/xtion/rgb/image_raw")))
+	#self._create_subscriber(str(instance_settings.value("topic_name", "/usb_cam/image_raw")))
