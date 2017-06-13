@@ -56,51 +56,48 @@ class ImageWidget(QWidget):
     def calc_bbox(self, dil_num):
         self.dilation_size = dil_num
 
-        fgMaskMOG2 = None
-        self.pMOG2.apply(self._cv_image, fgMaskMOG2, 0.001)
-        cv2.inRange(fgMaskMOG2, cv2.Scalar(250,250,250), cv2.Scalar(255,255,255), fgMaskMOG2)
-        mask = cv2.Mat(fgMaskMOG2.size(), fgMaskMOG2.type())
-        mask.setTo(cv2.Scalar(0,0,0))
-        cv2.rectangle(mask, cv2.Rect(150,110,300,330), cv2.Scalar(255,255,255), cv2.FILLED)
-        maskedImage = None
-        fgMaskMOG2.copyTo(maskedImage, mask)
-        maskedImage.copyTo(fgMaskMOG2)
+        pMOG2 = cv2.createBackgroundSubtractorMOG2(500, 16, True)
+        fgMaskMOG2 = pMOG2.apply(self._cv_image, 0.001)
+        cv2.inRange(fgMaskMOG2, 250, 255)
+        mask = np.zeros(fgMaskMOG2.shape, np.uint8)
+        mask = cv2.rectangle(mask, (150, 110), (300, 330), (255, 255, 255), cv2.FILLED)
+        fgMaskMOG2 = cv2.bitwise_and(fgMaskMOG2, fgMaskMOG2, mask=mask)
 
-        elementEr = cv2.getStructuringElement(cv2.MORPH_RECT, (self.erosion_size, self.erosion_size), (-1,-1))
-        cv2.dilate(fgMaskMOG2, fgMaskMOG2, elementEr)
+        erosion_size = 5
 
-        elementDi = cv2.getStructuringElement(cv2.MORPH_RECT, (self.erosion_size, self.erosion_size), (-1,-1))
-        cv2.erode(fgMaskMOG2, fgMaskMOG2, elementDi)
+        elementEr = cv2.getStructuringElement(cv2.MORPH_RECT, (erosion_size, erosion_size), (-1, -1))
+        fgMaskMOG2 = cv2.dilate(fgMaskMOG2, elementEr)
 
-        diagElem = np.identity(10)
-        cv2.erode(fgMaskMOG2, fgMaskMOG2, diagElem)
-        cv2.dilate(fgMaskMOG2, fgMaskMOG2, diagElem)
+        elementDi = cv2.getStructuringElement(cv2.MORPH_RECT, (erosion_size, erosion_size), (-1, -1))
+        fgMaskMOG2 = cv2.erode(fgMaskMOG2, elementDi)
+
+        diagElem = np.identity(10, np.uint8)
+        fgMaskMOG2 = cv2.erode(fgMaskMOG2, diagElem)
+        fgMaskMOG2 = cv2.dilate(fgMaskMOG2, diagElem)
 
         diagElem2 = np.flip(diagElem, 1)
-        cv2.erode(fgMaskMOG2, fgMaskMOG2, diagElem2)
-        cv2.dilate(fgMaskMOG2, fgMaskMOG2, diagElem2)
+        fgMaskMOG2 = cv2.erode(fgMaskMOG2, diagElem2)
+        fgMaskMOG2 = cv2.dilate(fgMaskMOG2, diagElem2)
 
         shapeHeight = 2
         shapeWidth = 5
 
         for i in range(2):
-            elementEr = cv2.getStructuringElement(cv2.MORPH_RECT, (shapeHeight, shapeWidth), (-1,-1))
-            cv2.erode(fgMaskMOG2, fgMaskMOG2, elementEr)
-            elementDi = cv2.getStructuringElement(cv2.MORPH_RECT, (shapeHeight, shapeWidth), (-1,-1))
-            cv2.dilate(fgMaskMOG2, fgMaskMOG2, elementDi)
+            elementEr = cv2.getStructuringElement(cv2.MORPH_RECT, (shapeHeight, shapeWidth), (-1, -1))
+            fgMaskMOG2 = cv2.erode(fgMaskMOG2, elementEr)
+            elementDi = cv2.getStructuringElement(cv2.MORPH_RECT, (shapeHeight, shapeWidth), (-1, -1))
+            fgMaskMOG2 = cv2.dilate(fgMaskMOG2, elementDi)
 
         thresh = 1
-        cv2.blur(fgMaskMOG2, fgMaskMOG2, (6,6))
-        cv2.Canny(fgMaskMOG2, fgMaskMOG2, thresh, thresh*2, 3)
+        fgMaskMOG2 = cv2.blur(fgMaskMOG2, (6, 6))
+        fgMaskMOG2 = cv2.Canny(fgMaskMOG2, thresh, thresh * 2, 3)
 
         dil_size = 2
-        elementDi = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2*dil_size+1, 2*dil_size+1), (dil_size, dil_size))
-        cv2.dilate(fgMaskMOG2, fgMaskMOG2, elementDi)
+        elementDi = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * dil_size + 1, 2 * dil_size + 1),
+                                              (dil_size, dil_size))
+        fgMaskMOG2 = cv2.dilate(fgMaskMOG2, elementDi)
 
-        contours = None
-        hierarchy = None
-
-        cv2.findContours(fgMaskMOG2, contours, hierarchy, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, (0,0))
+        fgMaskMOG2, contours, hierarchy = cv2.findContours(fgMaskMOG2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         largest_area = 0
         largest_contour_index = 0
@@ -113,9 +110,8 @@ class ImageWidget(QWidget):
 
         cv2.convexHull(contours[largest_contour_index], contours[largest_contour_index])
         self.bbox = cv2.boundingRect(contours[largest_contour_index])
-
-        cv2.rectangle(self._cv_image, self.bbox, (0,0,255))
-
+        self.bbox = (self.bbox[0], self.bbox[0]+ self.bbox[2], self.bbox[1], self.bbox[1] + self.bbox[3])
+        cv2.rectangle(self._cv_image, (self.bbox[0], self.bbox[2]), (self.bbox[1], self.bbox[3]), (0, 0, 255))
 
     def get_bbox(self):
         return self.bbox
