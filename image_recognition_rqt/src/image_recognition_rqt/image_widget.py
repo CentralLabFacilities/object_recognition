@@ -31,19 +31,15 @@ class ImageWidget(QWidget):
         self._cv_image = None
         self._qt_image = QImage()
 	print("create background subtractor")
-	pMOG2 = cv2.createBackgroundSubtractorMOG2(500, 16, True)
+	self.pMOG2 = cv2.createBackgroundSubtractorMOG2(500, 16, True)
 
 
 
 	self.clip_rect = QRect(0, 0, 0, 0)
         self.dragging = False
         self.drag_offset = QPoint()
-        #self.image_roi_callback = image_roi_callback
 
         self.detections = []
-        #self._clear_on_click = clear_on_click
-	
-	#self.pMOG2 = cv2.createBackgroundSubtractorMOG2(500, 16, True)
 
 
     def paintEvent(self, event):
@@ -69,7 +65,7 @@ class ImageWidget(QWidget):
         #self.image_callback = image_callback
 
         self.bbox = None
-        self.pMOG2 = cv2.createBackgroundSubtractorMOG2(500,16,True)
+        #self.pMOG2 = cv2.createBackgroundSubtractorMOG2(500,16,True)
 
         self.erosion_size = 5
         self.dilation_size = 5
@@ -95,20 +91,21 @@ class ImageWidget(QWidget):
         self.dilation_size = dil_num
 
         fgMaskMOG2 = self.pMOG2.apply(self._cv_image, 0.001)
-	cv2.imshow('1',fgMaskMOG2)
         fgMaskMOG2 = cv2.inRange(fgMaskMOG2, 250, 255)
         #mask = np.zeros(fgMaskMOG2.shape, np.uint8)
         #mask = cv2.rectangle(mask, (150, 110), (300, 330), (255, 255, 255), cv2.FILLED)
         #fgMaskMOG2 = cv2.bitwise_and(fgMaskMOG2, fgMaskMOG2, mask=mask)
         erosion_size = 5
-	cv2.imshow('3',fgMaskMOG2)
+	#cv2.imshow('3',fgMaskMOG2)
 
         elementEr = cv2.getStructuringElement(cv2.MORPH_RECT, (erosion_size, erosion_size), (-1, -1))
         fgMaskMOG2 = cv2.dilate(fgMaskMOG2, elementEr)
 
+	cv2.imshow('1',fgMaskMOG2)
         elementDi = cv2.getStructuringElement(cv2.MORPH_RECT, (erosion_size, erosion_size), (-1, -1))
         fgMaskMOG2 = cv2.erode(fgMaskMOG2, elementDi)
 
+	cv2.imshow('2',fgMaskMOG2)
         diagElem = np.identity(10, np.uint8)
         fgMaskMOG2 = cv2.erode(fgMaskMOG2, diagElem)
         fgMaskMOG2 = cv2.dilate(fgMaskMOG2, diagElem)
@@ -130,7 +127,7 @@ class ImageWidget(QWidget):
         thresh = 1
         fgMaskMOG2 = cv2.blur(fgMaskMOG2, (6, 6))
         fgMaskMOG2 = cv2.Canny(fgMaskMOG2, thresh, thresh * 2, 3)
-        dil_size = 2
+        dil_size = 4
         elementDi = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * dil_size + 1, 2 * dil_size + 1),
                                               (dil_size, dil_size))
         fgMaskMOG2 = cv2.dilate(fgMaskMOG2, elementDi)
@@ -154,4 +151,6 @@ class ImageWidget(QWidget):
 	#print(self.bbox[0])
 
     def get_bbox(self):
+	print(self.bbox[0])
+	print(self.bbox[1])
         return self.bbox
