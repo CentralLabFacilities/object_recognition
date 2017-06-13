@@ -2,8 +2,22 @@ import cv2
 import os
 import datetime
 
+def convert(size, box):
+    dw = 1./size[0]
+    dh = 1./size[1]
+    x = (box[0] + box[1])/2.0
+    y = (box[2] + box[3])/2.0
+    w = box[1] - box[0]
+    h = box[3] - box[2]
+    x = x*dw
+    w = w*dw
+    y = y*dh
+    h = h*dh
+    return (x,y,w,h)
 
-def write_annotated(dir_path, image, label, verified=False):
+
+
+def write_annotated(dir_path, image, label, cls_id, bbox, test=False):
     """
     Write an image with an annotation to a folder
     :param dir_path: The base directory we are going to write to
@@ -19,47 +33,39 @@ def write_annotated(dir_path, image, label, verified=False):
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
 
-    # Check if path exists, otherwise created it
-    annotated_dir = dir_path + "/annotated"
-    if not os.path.exists(annotated_dir):
-        os.makedirs(annotated_dir)
+    # Main directory for files of class <label>
+    class_dir = dir_path + "/" + label
 
-    # Check if path exists, otherwise created it
-    annotated_verified_unverified_dir = annotated_dir + "/verified" if verified else annotated_dir + "/unverified"
-    if not os.path.exists(annotated_verified_unverified_dir):
-        os.makedirs(annotated_verified_unverified_dir)
-
-    # Check if path exists, otherwise created it
-    label_dir = annotated_verified_unverified_dir + "/" + label
+    # Directory for label files
+    label_dir = class_dir + "/labels"
     if not os.path.exists(label_dir):
         os.makedirs(label_dir)
 
-    filename = "%s/%s.jpg" % (label_dir, datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S_%f"))
-    cv2.imwrite(filename, image)
+    # Directory for image files
+    image_dir = class_dir + "/images"
+    if not os.path.exists(image_dir):
+        os.makedirs(image_dir)
 
-    return True
+    # write image in image_dir
+    filename = "{}-{}".format(label, datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S_%f"))
+    cv2.imwrite("{}/{}.jpg".format(image_dir, filename), image)
 
+    # convert bbox for darknet
+    w, h = image.shape[:2]
+    bb = convert((w,h), bbox)
 
-def write_raw(dir_path, image):
-    """
-    Write an image to a file (path) with the label as subfolder
-    :param dir_path: The base directory we are going to write to
-    :param image: The OpenCV image
-    """
+    # write converted bbox as label in label_dir
+    label_file = open("{}/{}.txt".format(label_dir, filename), 'w')
+    label_file.write(str(cls_id) + " " + " ".join([str(a) for a in bb]) + '\n')
 
-    if dir_path is None:
-        return False
+    # safe image path to list for training/test set
+    if not test:
+        file_list = open("{}/train.txt".format(dir_path))
+    else:
+        file_list = open("{}/test.txt".format(dir_path))
 
-    # Check if path exists, otherwise created it
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
+    file_list.write("{}/{}.jpg\n".format(image_dir, filename))
+    file_list.close()
 
-    # Check if path exists, otherwise created it
-    raw_dir = dir_path + "/raw"
-    if not os.path.exists(raw_dir):
-        os.makedirs(raw_dir)
-
-    filename = "%s/%s.jpg" % (raw_dir, datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S_%f"))
-    cv2.imwrite(filename, image)
 
     return True

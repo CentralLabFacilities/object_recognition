@@ -61,3 +61,35 @@ def option_dialog(title, options):
     if dlg.exec_():
         return str(dlg.option_selector.currentText())
     return None
+
+def number_dialog(title):
+    """
+    Helper function for creating a number of Images dialog
+    :param title: Title of the dialog
+    :return: number of Images
+    """
+    class NumberDialog(QDialog):
+        def __init__(self, title):
+            super(NumberDialog, self).__init__()
+
+            self.layout = QGridLayout()
+            self.edit = QLineEdit()
+            self.edit.setText(str(1000))
+            self.edit.setValidator(QIntValidator())
+            self.edit.setMaxLength(4)
+            self.edit.setAlignment(Qt.AlignRight)
+            self.layout.addWidget(QLabel("{}:".format(title)), 0, 0)
+            self.layout.addWidget(self.edit,0,1)
+            self.ok_Button = QPushButton('ok')
+            self.ok_Button.clicked.connect(self.accept)
+            self.layout.addWidget(self.ok_Button,0,2)
+
+            self.setLayout(self.layout)
+
+        def keyPressEvent(self, event):
+            super(NumberDialog, self).keyPressEvent(event)
+            if event.key() == Qt.Key_Return:
+                self.accept()
+    dlg = NumberDialog(title)
+    if dlg.exec_():
+        return int(dlg.edit.text())

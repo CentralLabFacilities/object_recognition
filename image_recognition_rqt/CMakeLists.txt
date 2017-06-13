@@ -8,7 +8,6 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   rqt_gui
   rqt_gui_py
-  image_recognition_msgs
   image_recognition_util
   sensor_msgs
 )
@@ -23,7 +22,5 @@ install(FILES plugin.xml
 
 install(PROGRAMS
   scripts/annotation_gui
-  scripts/manual_gui
-  scripts/test_gui
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

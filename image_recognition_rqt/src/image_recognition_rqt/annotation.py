@@ -14,15 +14,12 @@ import cv2
 import datetime
 import re
 import rosservice
+import time
 
 from image_widget import ImageWidget
-from dialogs import option_dialog, warning_dialog
+from dialogs import option_dialog, warning_dialog, number_dialog
 
-from image_recognition_msgs.msg import Annotation
 from image_recognition_util import image_writer
-from sensor_msgs.msg import RegionOfInterest
-
-_SUPPORTED_SERVICES = ["image_recognition_msgs/Annotate"]
 
 
 def _sanitize(label):
@@ -53,12 +50,24 @@ class AnnotationPlugin(Plugin):
         layout = QVBoxLayout()  
         self._widget.setLayout(layout)
 
-        self._image_widget = ImageWidget(self._widget, self.image_roi_callback, clear_on_click=True)
+        self._image_widget = ImageWidget(self._widget, self._image_callback)
         layout.addWidget(self._image_widget)
 
         # Input field
         grid_layout = QGridLayout()
         layout.addLayout(grid_layout)
+
+
+        grid_layout.addWidget(QLabel("Dilation size"), 0, 1)
+
+        self._slider = QSlider(Qt.Horizontal)
+        self._slider.setMinimum(0)
+        self._slider.setMaximum(10)
+        self._slider.setValue(5)
+        self._slider.setTickPosition(QSlider.TicksBelow)
+        self._slider.setTickInterval(1)
+
+        grid_layout.addWidget(self._slider, 0, 2)
 
         self._edit_path_button = QPushButton("Edit path")
         self._edit_path_button.clicked.connect(self._get_output_directory)
@@ -76,8 +85,8 @@ class AnnotationPlugin(Plugin):
         self._edit_labels_button.clicked.connect(self._get_labels)
         grid_layout.addWidget(self._edit_labels_button, 2, 1)
 
-        self._save_button = QPushButton("Annotate again!")
-        self._save_button.clicked.connect(self.annotate_again_clicked)
+        self._save_button = QPushButton("create Dataset")
+        self._save_button.clicked.connect(self.create_dataset_clicked)
         grid_layout.addWidget(self._save_button, 2, 3)
 
         # Bridge for opencv conversion
@@ -87,77 +96,48 @@ class AnnotationPlugin(Plugin):
         self._sub = None
         self._srv = None
 
+        self.test = False
         self.labels = []
         self.label = ""
         self.output_directory = ""
 
-    def image_roi_callback(self, roi_image):
+
+
+    def create_dataset_clicked(self):
         """
-        Callback from the image widget when the user has selected a ROI
-        :param roi_image: The opencv image of the ROI
+        Triggered when button clicked
         """
         if not self.labels:
             warning_dialog("No labels specified!", "Please first specify some labels using the 'Edit labels' button")
             return
 
-        height, width = roi_image.shape[:2]
-
         option = option_dialog("Label", self.labels)
-        if option:
+        numImg = number_dialog("Number of Images")
+        if option and numImg:
+            print(numImg)
             self.label = option
-            self._image_widget.add_detection(0, 0, width, height, option)
-            self.annotate(roi_image)
+            for num in range(numImg):
+                self.store_image(self._image_widget.get_image(), self._image_widget.get_bbox())
 
-    def annotate_again_clicked(self):
-        """
-        Triggered when button clicked
-        """
-        roi_image = self._image_widget.get_roi_image()
-        if roi_image is not None:
-            self.annotate(roi_image)
 
-    def annotate(self, roi_image):
+
+    def annotate(self, image, bbox):
         """
         Create an annotation
-        :param roi_image: The image we want to annotate
+        :param image: The image we want to annotate
         """
-        self.annotate_srv(roi_image)
-        self.store_image(roi_image)
+        self.annotate_srv(image, bbox)
+        self.store_image(image, bbox)
 
-    def annotate_srv(self, roi_image):
-        """
-        Call the selected Annotate.srv
-        :param roi_image: The full opencv image we want to annotate
-        """
-        if roi_image is not None and self.label is not None and self._srv is not None:
-            height, width = roi_image.shape[:2]
-            try:
-                self._srv(image=self.bridge.cv2_to_imgmsg(roi_image, "bgr8"),
-                          annotations=[Annotation(label=self.label,
-                                                  roi=RegionOfInterest(x_offset=0, y_offset=0,
-                                                                       width=width, height=height))])
-            except Exception as e:
-                warning_dialog("Service Exception", str(e))
 
-    def _create_service_client(self, srv_name):
-        """
-        Create a service client proxy
-        :param srv_name: Name of the service
-        """
-        if self._srv:
-            self._srv.close()
-
-        if srv_name in rosservice.get_service_list():
-            rospy.loginfo("Creating proxy for service '%s'" % srv_name)
-            self._srv = rospy.ServiceProxy(srv_name, rosservice.get_service_class_by_name(srv_name))
-            
-    def store_image(self, roi_image):
+    def store_image(self, image, bbox):
         """
         Store the image
-        :param roi_image: Image we would like to store
+        :param image: Image we would like to store
         """
-        if roi_image is not None and self.label is not None and self.output_directory is not None:
-            image_writer.write_annotated(self.output_directory, roi_image, self.label, True)
+        if image is not None and self.label is not None and self.output_directory is not None:
+            cls_id = self.labels.index(self.label)
+            image_writer.write_annotated(self.output_directory, image, self.label, cls_id, bbox, self.test)
 
     def _get_output_directory(self):
         """
@@ -208,6 +188,7 @@ class AnnotationPlugin(Plugin):
             rospy.logerr(e)
 
         self._image_widget.set_image(cv_image)
+        self._image_widget.get_bbox(self._slider.value())
 
     def trigger_configuration(self):
         """
@@ -277,5 +258,4 @@ class AnnotationPlugin(Plugin):
             pass
         self._set_labels(labels)
 
-        self._create_subscriber(str(instance_settings.value("topic_name", "/usb_cam/image_raw")))
-        self._create_service_client(str(instance_settings.value("service_name", "/image_recognition/my_service")))
+        self._create_subscriber(str(instance_settings.value("topic_name", "/xtion/rgb/image_raw")))
