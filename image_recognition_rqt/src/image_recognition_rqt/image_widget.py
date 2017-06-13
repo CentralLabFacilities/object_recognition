@@ -14,7 +14,7 @@ def _convert_cv_to_qt_image(cv_image):
     height, width, byte_value = cv_image.shape
     byte_value = byte_value * width
     cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB, cv_image)
-
+    print(width)
     return QImage(cv_image, width, height, byte_value, QImage.Format_RGB888)
 
 
@@ -30,7 +30,38 @@ class ImageWidget(QWidget):
         self._cv_image = None
         self._qt_image = QImage()
 
-        self.image_callback = image_callback
+
+
+
+	self.clip_rect = QRect(0, 0, 0, 0)
+        self.dragging = False
+        self.drag_offset = QPoint()
+        #self.image_roi_callback = image_roi_callback
+
+        self.detections = []
+        #self._clear_on_click = clear_on_click
+
+    def paintEvent(self, event):
+        """
+        Called every tick, paint event of QT
+        :param event: Paint event of QT
+        """
+        painter = QPainter()
+        painter.begin(self)
+        painter.drawImage(0, 0, self._qt_image)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(QPen(Qt.cyan, 5.0))
+        painter.drawRect(self.clip_rect)
+
+        painter.setFont(QFont('Decorative', 10))
+        for rect, label in self.detections:
+            painter.setPen(QPen(Qt.magenta, 5.0))
+            painter.drawRect(rect)
+
+
+
+
+        #self.image_callback = image_callback
 
         self.bbox = None
         self.pMOG2 = cv2.createBackgroundSubtractorMOG2(500,16,True)
@@ -50,6 +81,7 @@ class ImageWidget(QWidget):
         """
         self._cv_image = image
         self._qt_image = _convert_cv_to_qt_image(image)
+	#print(self._qt_image)
         self.update()
 
 
@@ -75,7 +107,8 @@ class ImageWidget(QWidget):
         fgMaskMOG2 = cv2.erode(fgMaskMOG2, diagElem)
         fgMaskMOG2 = cv2.dilate(fgMaskMOG2, diagElem)
 
-        diagElem2 = np.flip(diagElem, 1)
+#        diagElem2 = np.flip(diagElem, 1)
+        diagElem2 = np.fliplr(diagElem)
         fgMaskMOG2 = cv2.erode(fgMaskMOG2, diagElem2)
         fgMaskMOG2 = cv2.dilate(fgMaskMOG2, diagElem2)
 
@@ -112,6 +145,7 @@ class ImageWidget(QWidget):
         self.bbox = cv2.boundingRect(contours[largest_contour_index])
         self.bbox = (self.bbox[0], self.bbox[0]+ self.bbox[2], self.bbox[1], self.bbox[1] + self.bbox[3])
         cv2.rectangle(self._cv_image, (self.bbox[0], self.bbox[2]), (self.bbox[1], self.bbox[3]), (0, 0, 255))
+	#print(self.bbox[0])
 
     def get_bbox(self):
         return self.bbox

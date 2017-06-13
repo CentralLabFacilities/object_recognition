@@ -108,6 +108,7 @@ class AnnotationPlugin(Plugin):
         """
         Triggered when button clicked
         """
+	print("create dataset")
         if not self.labels:
             warning_dialog("No labels specified!", "Please first specify some labels using the 'Edit labels' button")
             return
@@ -136,8 +137,12 @@ class AnnotationPlugin(Plugin):
         Store the image
         :param image: Image we would like to store
         """
+	print(self.output_directory)
+	print(image)
+	print(self.label)
         if image is not None and self.label is not None and self.output_directory is not None:
-            cls_id = self.labels.index(self.label)
+	    print("store image")
+            cls_id = list(self.labels).index(self.label)
             image_writer.write_annotated(self.output_directory, image, self.label, cls_id, bbox, self.test)
 
     def _get_output_directory(self):
@@ -189,9 +194,12 @@ class AnnotationPlugin(Plugin):
         except CvBridgeError as e:
             rospy.logerr(e)
 	#cv_image = cv2.imread('/home/sarah/catkin_ws/dog.jpg')
-	cv2.imwrite('color_img.jpg', cv_image)
+	
         self._image_widget.set_image(cv_image)
-        #self._image_widget.get_bbox(self._image_widget.calc_bbox(self._slider.value()))
+	cv2.imwrite('color_img.jpg', cv_image)
+        self._image_widget.calc_bbox(self._slider.value())
+	self._image_widget.set_image(cv_image)
+	#self._image_widget.calc_bbox(2)
 
     def trigger_configuration(self):
         """

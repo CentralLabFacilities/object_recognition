@@ -49,6 +49,9 @@ def write_annotated(dir_path, image, label, cls_id, bbox, test=False):
     # write image in image_dir
     filename = "{}-{}".format(label, datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S_%f"))
     cv2.imwrite("{}/{}.jpg".format(image_dir, filename), image)
+    #filename = "/home/sarah/object_recogntion/%s.jpg" % (datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S_%f"))
+    print(filename)
+    #cv2.imwrite(filename, image)
 
     # convert bbox for darknet
     w, h = image.shape[:2]
@@ -60,9 +63,9 @@ def write_annotated(dir_path, image, label, cls_id, bbox, test=False):
 
     # safe image path to list for training/test set
     if not test:
-        file_list = open("{}/train.txt".format(dir_path))
+        file_list = open("{}/train.txt".format(dir_path),'w')
     else:
-        file_list = open("{}/test.txt".format(dir_path))
+        file_list = open("{}/test.txt".format(dir_path),'w')
 
     file_list.write("{}/{}.jpg\n".format(image_dir, filename))
     file_list.close()
