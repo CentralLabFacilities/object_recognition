@@ -3,6 +3,7 @@ from python_qt_binding.QtGui import *
 from python_qt_binding.QtCore import * 
 import cv2
 import numpy as np
+import copy
 
 def _convert_cv_to_qt_image(cv_image):
     """
@@ -30,7 +31,6 @@ class ImageWidget(QWidget):
         super(ImageWidget, self).__init__(parent)
         self._cv_image = None
         self._qt_image = QImage()
-        print("create background subtractor")
         self.pMOG2 = cv2.createBackgroundSubtractorMOG2(500, 16, True)
 
         self.clip_rect = QRect(0, 0, 0, 0)
@@ -128,7 +128,7 @@ class ImageWidget(QWidget):
         Sets an opencv image to the widget
         :param image: The opencv image
         """
-        self._cv_image = image
+        self._cv_image = copy.copy(image)
         image = self.calc_bbox(image, dil_size, eros_size)
         self._qt_image = _convert_cv_to_qt_image(image)
         self.update()

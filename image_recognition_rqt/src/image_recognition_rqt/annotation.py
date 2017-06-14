@@ -46,7 +46,7 @@ class AnnotationPlugin(Plugin):
 
         self._widget = QWidget()
         context.add_widget(self._widget)
-        
+        self._widget.resize(800,1000)
         # Layout and attach to widget
         layout = QVBoxLayout()  
         self._widget.setLayout(layout)
@@ -111,7 +111,7 @@ class AnnotationPlugin(Plugin):
         self._sub = None
         self._srv = None
 
-        self.interval = 5
+        self.interval = 3
         self.numImg = 0
         self.safe = False
         self.imgs2Safe = 0
@@ -130,11 +130,15 @@ class AnnotationPlugin(Plugin):
             warning_dialog("No labels specified!", "Please first specify some labels using the 'Edit labels' button")
             return
 
-        option = option_dialog("Label", self.labels)
-        self.imgs2Safe = number_dialog("Number of Images")
-        if option and self.imgs2Safe:
-            self.label = option
-            self.safe = True
+        if self.safe:
+            self.safe = False
+            self.numImg = 0
+        else:
+            option = option_dialog("Label", self.labels)
+            #self.imgs2Safe = number_dialog("Number of Images")
+            if option:# and self.imgs2Safe:
+                self.label = option
+                self.safe = True
 
 
 
@@ -156,7 +160,6 @@ class AnnotationPlugin(Plugin):
         print(image)
         print(self.label)
         if image is not None and self.label is not None and self.output_directory is not None:
-            print("store image")
             cls_id = list(self.labels).index(self.label)
             image_writer.write_annotated(self.output_directory, image, self.label, cls_id, bbox, self._test_button.isChecked())
 
@@ -204,19 +207,20 @@ class AnnotationPlugin(Plugin):
         :param msg: The image messaeg
         """
         try:
-            self.numImg += 1
             cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
             dil_size = self._sliderDil.value()
             eros_size = self._sliderEros.value()
             self._image_widget.set_image(cv_image, dil_size, eros_size)
 
-            if self.safe and self.imgs2Safe > 0:
-                if self.numImg % self.interval == 0:
-                    self.store_image(self._image_widget.get_image(), self._image_widget.get_bbox())
-                    self.imgs2Safe -= 1
-            elif self.safe and self.imgs2Safe == 0:
-                info_dialog('finished', 'Dataset created!')
-                self.safe = False
+            if self.safe:# and self.imgs2Safe > 0:
+                self.numImg += 1
+                print(self.numImg)
+                #if self.numImg % self.interval == 0:
+                self.store_image(self._image_widget.get_image(), self._image_widget.get_bbox())
+                self.imgs2Safe -= 1
+            #elif self.safe and self.imgs2Safe == 0:
+            #    info_dialog('finished', 'Dataset created!')
+            #    self.safe = False
         except CvBridgeError as e:
             rospy.logerr(e)
 

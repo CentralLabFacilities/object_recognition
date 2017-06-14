@@ -50,7 +50,6 @@ def write_annotated(dir_path, image, label, cls_id, bbox, test=False):
     filename = "{}-{}".format(label, datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S_%f"))
     cv2.imwrite("{}/{}.jpg".format(image_dir, filename), image)
     #filename = "/home/sarah/object_recogntion/%s.jpg" % (datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S_%f"))
-    print(filename)
     #cv2.imwrite(filename, image)
 
     # convert bbox for darknet
