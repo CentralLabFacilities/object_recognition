@@ -17,7 +17,7 @@ import rosservice
 import time
 
 from image_widget import ImageWidget
-from dialogs import option_dialog, warning_dialog, number_dialog
+from dialogs import option_dialog, info_dialog, warning_dialog, number_dialog
 
 from image_recognition_util import image_writer
 
@@ -58,37 +58,51 @@ class AnnotationPlugin(Plugin):
         grid_layout = QGridLayout()
         layout.addLayout(grid_layout)
 
+        grid_layout.addWidget(QLabel("Dilation size"), 1, 1)
 
-        grid_layout.addWidget(QLabel("Dilation size"), 0, 1)
+        self._sliderDil = QSlider(Qt.Horizontal)
+        self._sliderDil.setMinimum(0)
+        self._sliderDil.setMaximum(10)
+        self._sliderDil.setValue(5)
+        self._sliderDil.setTickPosition(QSlider.TicksBelow)
+        self._sliderDil.setTickInterval(1)
 
-        self._slider = QSlider(Qt.Horizontal)
-        self._slider.setMinimum(0)
-        self._slider.setMaximum(10)
-        self._slider.setValue(5)
-        self._slider.setTickPosition(QSlider.TicksBelow)
-        self._slider.setTickInterval(1)
+        grid_layout.addWidget(self._sliderDil, 1, 2)
 
-        grid_layout.addWidget(self._slider, 0, 2)
+        grid_layout.addWidget(QLabel("Erosion size"), 1, 3)
+
+        self._sliderEros = QSlider(Qt.Horizontal)
+        self._sliderEros.setMinimum(0)
+        self._sliderEros.setMaximum(10)
+        self._sliderEros.setValue(5)
+        self._sliderEros.setTickPosition(QSlider.TicksBelow)
+        self._sliderEros.setTickInterval(1)
+
+        grid_layout.addWidget(self._sliderEros, 1, 4)
 
         self._edit_path_button = QPushButton("Edit path")
         self._edit_path_button.clicked.connect(self._get_output_directory)
-        grid_layout.addWidget(self._edit_path_button, 1, 1)
+        grid_layout.addWidget(self._edit_path_button, 2, 1)
 
         self._output_path_edit = QLineEdit()
         self._output_path_edit.setDisabled(True)
-        grid_layout.addWidget(self._output_path_edit, 1, 2)
+        grid_layout.addWidget(self._output_path_edit, 2, 2)
 
         self._labels_edit = QLineEdit()
         self._labels_edit.setDisabled(True)
-        grid_layout.addWidget(self._labels_edit, 2, 2)
+        grid_layout.addWidget(self._labels_edit, 3, 2)
 
         self._edit_labels_button = QPushButton("Edit labels")
         self._edit_labels_button.clicked.connect(self._get_labels)
-        grid_layout.addWidget(self._edit_labels_button, 2, 1)
+        grid_layout.addWidget(self._edit_labels_button, 3, 1)
 
         self._save_button = QPushButton("create Dataset")
         self._save_button.clicked.connect(self.create_dataset_clicked)
-        grid_layout.addWidget(self._save_button, 2, 3)
+        grid_layout.addWidget(self._save_button, 3, 3)
+
+        self._test_button = QRadioButton("TestSet")
+        self._test_button.setChecked(False)
+        grid_layout.addWidget(self._test_button, 3, 4)
 
         # Bridge for opencv conversion
         self.bridge = CvBridge()
@@ -97,7 +111,10 @@ class AnnotationPlugin(Plugin):
         self._sub = None
         self._srv = None
 
-        self.test = False
+        self.interval = 5
+        self.numImg = 0
+        self.safe = False
+        self.imgs2Safe = 0
         self.labels = []
         self.label = ""
         self.output_directory = ""
@@ -108,18 +125,16 @@ class AnnotationPlugin(Plugin):
         """
         Triggered when button clicked
         """
-	print("create dataset")
+        print("create dataset")
         if not self.labels:
             warning_dialog("No labels specified!", "Please first specify some labels using the 'Edit labels' button")
             return
 
         option = option_dialog("Label", self.labels)
-        numImg = number_dialog("Number of Images")
-        if option and numImg:
-            print(numImg)
+        self.imgs2Safe = number_dialog("Number of Images")
+        if option and self.imgs2Safe:
             self.label = option
-            for num in range(numImg):
-                self.store_image(self._image_widget.get_image(), self._image_widget.get_bbox())
+            self.safe = True
 
 
 
@@ -137,13 +152,13 @@ class AnnotationPlugin(Plugin):
         Store the image
         :param image: Image we would like to store
         """
-	print(self.output_directory)
-	print(image)
-	print(self.label)
+        print(self.output_directory)
+        print(image)
+        print(self.label)
         if image is not None and self.label is not None and self.output_directory is not None:
-	    print("store image")
+            print("store image")
             cls_id = list(self.labels).index(self.label)
-            image_writer.write_annotated(self.output_directory, image, self.label, cls_id, bbox, self.test)
+            image_writer.write_annotated(self.output_directory, image, self.label, cls_id, bbox, self._test_button.isChecked())
 
     def _get_output_directory(self):
         """
@@ -188,18 +203,22 @@ class AnnotationPlugin(Plugin):
         Called when a new sensor_msgs/Image is coming in
         :param msg: The image messaeg
         """
-	#print("try to get image");
         try:
+            self.numImg += 1
             cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+            dil_size = self._sliderDil.value()
+            eros_size = self._sliderEros.value()
+            self._image_widget.set_image(cv_image, dil_size, eros_size)
+
+            if self.safe and self.imgs2Safe > 0:
+                if self.numImg % self.interval == 0:
+                    self.store_image(self._image_widget.get_image(), self._image_widget.get_bbox())
+                    self.imgs2Safe -= 1
+            elif self.safe and self.imgs2Safe == 0:
+                info_dialog('finished', 'Dataset created!')
+                self.safe = False
         except CvBridgeError as e:
             rospy.logerr(e)
-	#cv_image = cv2.imread('/home/sarah/catkin_ws/dog.jpg')
-	
-        self._image_widget.set_image(cv_image)
-	cv2.imwrite('color_img.jpg', cv_image)
-        self._image_widget.calc_bbox(self._slider.value())
-	self._image_widget.set_image(cv_image)
-	#self._image_widget.calc_bbox(2)
 
     def trigger_configuration(self):
         """
@@ -280,6 +299,5 @@ class AnnotationPlugin(Plugin):
         except:
             pass
         self._set_labels(labels)
-	self._create_service_client(str(instance_settings.value("service_name", "/image_recognition/my_service")))
+        self._create_service_client(str(instance_settings.value("service_name", "/image_recognition/my_service")))
         self._create_subscriber(str(instance_settings.value("topic_name", "/xtion/rgb/image_raw")))
-	#self._create_subscriber(str(instance_settings.value("topic_name", "/usb_cam/image_raw")))

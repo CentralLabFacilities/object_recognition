@@ -63,9 +63,9 @@ def write_annotated(dir_path, image, label, cls_id, bbox, test=False):
 
     # safe image path to list for training/test set
     if not test:
-        file_list = open("{}/train.txt".format(dir_path),'w')
+        file_list = open("{}/train.txt".format(dir_path),'a')
     else:
-        file_list = open("{}/test.txt".format(dir_path),'w')
+        file_list = open("{}/test.txt".format(dir_path),'a')
 
     file_list.write("{}/{}.jpg\n".format(image_dir, filename))
     file_list.close()

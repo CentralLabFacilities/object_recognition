@@ -30,16 +30,16 @@ class ImageWidget(QWidget):
         super(ImageWidget, self).__init__(parent)
         self._cv_image = None
         self._qt_image = QImage()
-	print("create background subtractor")
-	self.pMOG2 = cv2.createBackgroundSubtractorMOG2(500, 16, True)
+        print("create background subtractor")
+        self.pMOG2 = cv2.createBackgroundSubtractorMOG2(500, 16, True)
 
+        self.clip_rect = QRect(0, 0, 0, 0)
 
-
-	self.clip_rect = QRect(0, 0, 0, 0)
         self.dragging = False
         self.drag_offset = QPoint()
 
         self.detections = []
+        self.bbox = None
 
 
     def paintEvent(self, event):
@@ -64,53 +64,20 @@ class ImageWidget(QWidget):
 
         #self.image_callback = image_callback
 
-        self.bbox = None
-        #self.pMOG2 = cv2.createBackgroundSubtractorMOG2(500,16,True)
-
-        self.erosion_size = 5
-        self.dilation_size = 5
-        self.detections = []
-
-
-    def get_image(self):
-        # Flip if we have dragged the other way
-        return self._cv_image
-
-    def set_image(self, image):
-        """
-        Sets an opencv image to the widget
-        :param image: The opencv image
-        """
-        self._cv_image = image
-        self._qt_image = _convert_cv_to_qt_image(image)
-	#print(self._qt_image)
-        self.update()
-
-
-    def calc_bbox(self, dil_num):
-        self.dilation_size = dil_num
-
-        fgMaskMOG2 = self.pMOG2.apply(self._cv_image, 0.001)
+    def calc_bbox(self, image, dil_size, eros_size):
+        fgMaskMOG2 = self.pMOG2.apply(image, 0.001)
         fgMaskMOG2 = cv2.inRange(fgMaskMOG2, 250, 255)
-        #mask = np.zeros(fgMaskMOG2.shape, np.uint8)
-        #mask = cv2.rectangle(mask, (150, 110), (300, 330), (255, 255, 255), cv2.FILLED)
-        #fgMaskMOG2 = cv2.bitwise_and(fgMaskMOG2, fgMaskMOG2, mask=mask)
-        erosion_size = 5
-	#cv2.imshow('3',fgMaskMOG2)
 
-        elementEr = cv2.getStructuringElement(cv2.MORPH_RECT, (erosion_size, erosion_size), (-1, -1))
+        elementEr = cv2.getStructuringElement(cv2.MORPH_RECT, (eros_size, eros_size), (-1, -1))
         fgMaskMOG2 = cv2.dilate(fgMaskMOG2, elementEr)
 
-	cv2.imshow('1',fgMaskMOG2)
-        elementDi = cv2.getStructuringElement(cv2.MORPH_RECT, (erosion_size, erosion_size), (-1, -1))
+        elementDi = cv2.getStructuringElement(cv2.MORPH_RECT, (dil_size, dil_size), (-1, -1))
         fgMaskMOG2 = cv2.erode(fgMaskMOG2, elementDi)
 
-	cv2.imshow('2',fgMaskMOG2)
         diagElem = np.identity(10, np.uint8)
         fgMaskMOG2 = cv2.erode(fgMaskMOG2, diagElem)
         fgMaskMOG2 = cv2.dilate(fgMaskMOG2, diagElem)
 
-#        diagElem2 = np.flip(diagElem, 1)
         diagElem2 = np.fliplr(diagElem)
         fgMaskMOG2 = cv2.erode(fgMaskMOG2, diagElem2)
         fgMaskMOG2 = cv2.dilate(fgMaskMOG2, diagElem2)
@@ -118,11 +85,15 @@ class ImageWidget(QWidget):
         shapeHeight = 2
         shapeWidth = 5
 
-        for i in range(2):
-            elementEr = cv2.getStructuringElement(cv2.MORPH_RECT, (shapeHeight, shapeWidth), (-1, -1))
-            fgMaskMOG2 = cv2.erode(fgMaskMOG2, elementEr)
-            elementDi = cv2.getStructuringElement(cv2.MORPH_RECT, (shapeHeight, shapeWidth), (-1, -1))
-            fgMaskMOG2 = cv2.dilate(fgMaskMOG2, elementDi)
+        elementEr = cv2.getStructuringElement(cv2.MORPH_RECT, (shapeHeight, shapeWidth), (-1, -1))
+        fgMaskMOG2 = cv2.erode(fgMaskMOG2, elementEr)
+        elementDi = cv2.getStructuringElement(cv2.MORPH_RECT, (shapeHeight, shapeWidth), (-1, -1))
+        fgMaskMOG2 = cv2.dilate(fgMaskMOG2, elementDi)
+        elementEr = cv2.getStructuringElement(cv2.MORPH_RECT, (shapeWidth, shapeHeight), (-1, -1))
+        fgMaskMOG2 = cv2.erode(fgMaskMOG2, elementEr)
+        elementDi = cv2.getStructuringElement(cv2.MORPH_RECT, (shapeWidth, shapeHeight), (-1, -1))
+        fgMaskMOG2 = cv2.dilate(fgMaskMOG2, elementDi)
+
 
         thresh = 1
         fgMaskMOG2 = cv2.blur(fgMaskMOG2, (6, 6))
@@ -133,7 +104,6 @@ class ImageWidget(QWidget):
         fgMaskMOG2 = cv2.dilate(fgMaskMOG2, elementDi)
 
         fgMaskMOG2, contours, hierarchy = cv2.findContours(fgMaskMOG2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-	#cv2.imshow('2',fgMaskMOG2)
 
         largest_area = 0
         largest_contour_index = 0
@@ -143,14 +113,27 @@ class ImageWidget(QWidget):
             if a > largest_area:
                 largest_area = a
                 largest_contour_index = i
+        if len(contours) > 0:
+            cv2.convexHull(contours[largest_contour_index], contours[largest_contour_index])
+            self.bbox = cv2.boundingRect(contours[largest_contour_index])
+            self.bbox = (self.bbox[0], self.bbox[0] + self.bbox[2], self.bbox[1], self.bbox[1] + self.bbox[3])
+            cv2.rectangle(image, (self.bbox[0], self.bbox[2]), (self.bbox[1], self.bbox[3]), (0, 0, 255))
+        return image
 
-        cv2.convexHull(contours[largest_contour_index], contours[largest_contour_index])
-        self.bbox = cv2.boundingRect(contours[largest_contour_index])
-        self.bbox = (self.bbox[0], self.bbox[0]+ self.bbox[2], self.bbox[1], self.bbox[1] + self.bbox[3])
-        cv2.rectangle(self._cv_image, (self.bbox[0], self.bbox[2]), (self.bbox[1], self.bbox[3]), (0, 0, 255))
-	#print(self.bbox[0])
+    def get_image(self):
+        return self._cv_image
+
+    def set_image(self, image, dil_size, eros_size):
+        """
+        Sets an opencv image to the widget
+        :param image: The opencv image
+        """
+        self._cv_image = image
+        image = self.calc_bbox(image, dil_size, eros_size)
+        self._qt_image = _convert_cv_to_qt_image(image)
+        self.update()
+
+
 
     def get_bbox(self):
-	print(self.bbox[0])
-	print(self.bbox[1])
         return self.bbox
