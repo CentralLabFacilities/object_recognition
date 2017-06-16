@@ -53,7 +53,7 @@ def write_annotated(dir_path, image, label, cls_id, bbox, test=False):
     #cv2.imwrite(filename, image)
 
     # convert bbox for darknet
-    w, h = image.shape[:2]
+    h, w = image.shape[:2] # changed w, h to h, w -- thilo
     bb = convert((w,h), bbox)
 
     # write converted bbox as label in label_dir
