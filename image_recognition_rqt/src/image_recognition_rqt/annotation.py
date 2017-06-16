@@ -251,7 +251,7 @@ class AnnotationPlugin(Plugin):
 
             if self.save:
                 self.numImg += 1
-                self.store_image(self._image_widget.get_image(), self._image_widget.get_bbox())
+                self.store_image(self._image_widget.get_image(), self._image_widget.get_bbox(), self.cls_id)
         except CvBridgeError as e:
             rospy.logerr(e)
 

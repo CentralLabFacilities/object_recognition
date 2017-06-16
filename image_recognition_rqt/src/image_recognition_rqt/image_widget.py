@@ -117,6 +117,9 @@ class ImageWidget(QWidget):
             cv2.convexHull(contours[largest_contour_index], contours[largest_contour_index])
             self.bbox = cv2.boundingRect(contours[largest_contour_index])
             self.bbox = (self.bbox[0], self.bbox[0] + self.bbox[2], self.bbox[1], self.bbox[1] + self.bbox[3])
+	    width = self.bbox[1] - self.bbox[0]
+	    height = self.bbox[3] - self.bbox[2]
+	    self.bbox = (self.bbox[0] + width/4, self.bbox[1] - width/4, self.bbox[2] + height/4, self.bbox[3] - height/4)
             cv2.rectangle(image, (self.bbox[0], self.bbox[2]), (self.bbox[1], self.bbox[3]), (0, 0, 255))
         return image
 
