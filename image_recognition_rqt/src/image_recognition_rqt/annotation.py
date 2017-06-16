@@ -140,7 +140,6 @@ class AnnotationPlugin(Plugin):
         """
         Triggered when button clicked
         """
-        print("create dataset")
         if not self.labels:
             warning_dialog("No labels specified!", "Please first specify some labels using the 'Edit labels' button")
             return
@@ -148,7 +147,6 @@ class AnnotationPlugin(Plugin):
         if self.save:
             self._save_button.setText("START")
             self.save = False
-            cls = self.labels[self.cls_id]
             self.labels[self.cls_id][1] = self.numImg
         else:
             self._save_button.setText("STOP")
