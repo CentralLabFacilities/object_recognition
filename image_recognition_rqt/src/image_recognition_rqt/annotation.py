@@ -61,8 +61,8 @@ class AnnotationPlugin(Plugin):
         grid_layout.addWidget(QLabel("Dilation size"), 1, 1)
 
         self._sliderDil = QSlider(Qt.Horizontal)
-        self._sliderDil.setMinimum(0)
-        self._sliderDil.setMaximum(10)
+        self._sliderDil.setMinimum(1)
+        self._sliderDil.setMaximum(15)
         self._sliderDil.setValue(5)
         self._sliderDil.setTickPosition(QSlider.TicksBelow)
         self._sliderDil.setTickInterval(1)
@@ -72,8 +72,8 @@ class AnnotationPlugin(Plugin):
         grid_layout.addWidget(QLabel("Erosion size"), 1, 3)
 
         self._sliderEros = QSlider(Qt.Horizontal)
-        self._sliderEros.setMinimum(0)
-        self._sliderEros.setMaximum(10)
+        self._sliderEros.setMinimum(1)
+        self._sliderEros.setMaximum(15)
         self._sliderEros.setValue(5)
         self._sliderEros.setTickPosition(QSlider.TicksBelow)
         self._sliderEros.setTickInterval(1)
@@ -88,15 +88,24 @@ class AnnotationPlugin(Plugin):
         self._output_path_edit.setDisabled(True)
         grid_layout.addWidget(self._output_path_edit, 2, 2)
 
-        self._labels_edit = QLineEdit()
-        self._labels_edit.setDisabled(True)
-        grid_layout.addWidget(self._labels_edit, 3, 2)
 
-        self._edit_labels_button = QPushButton("Edit labels")
-        self._edit_labels_button.clicked.connect(self._get_labels)
+        self.labels = []
+        self._option_selector = QComboBox()
+        self._option_selector.currentIndexChanged.connect(self.classChange)
+        grid_layout.addWidget(self._option_selector, 2, 3)
+
+        self.classImgs = []
+        self._imgNum_label = QLabel(str(0))
+        grid_layout.addWidget(self._imgNum_label, 2, 4)
+
+        self._label_edit = QLineEdit()
+        grid_layout.addWidget(self._label_edit, 3, 2)
+
+        self._edit_labels_button = QPushButton("Add Label")
+        self._edit_labels_button.clicked.connect(self._add_label)
         grid_layout.addWidget(self._edit_labels_button, 3, 1)
 
-        self._save_button = QPushButton("create Dataset")
+        self._save_button = QPushButton("START")
         self._save_button.clicked.connect(self.create_dataset_clicked)
         grid_layout.addWidget(self._save_button, 3, 3)
 
@@ -113,12 +122,18 @@ class AnnotationPlugin(Plugin):
 
         self.interval = 3
         self.numImg = 0
-        self.safe = False
-        self.imgs2Safe = 0
-        self.labels = []
+        self.save = False
         self.label = ""
         self.output_directory = ""
+        self.cls_id = None
 
+
+    def classChange(self):
+        self.label = self._option_selector.currentText()
+        self.cls_id = [i[0] for i in self.labels].index(self.label)
+        cls = self.labels[self.cls_id]
+        self.numImg = cls[1]
+        self._imgNum_label.setText(str(self.numImg))
 
 
     def create_dataset_clicked(self):
@@ -130,15 +145,15 @@ class AnnotationPlugin(Plugin):
             warning_dialog("No labels specified!", "Please first specify some labels using the 'Edit labels' button")
             return
 
-        if self.safe:
-            self.safe = False
-            self.numImg = 0
+        if self.save:
+            self._save_button.setText("START")
+            self.save = False
+            cls = self.labels[self.cls_id]
+            cls = list(cls)
+            cls[1] = self.numImg
         else:
-            option = option_dialog("Label", self.labels)
-            #self.imgs2Safe = number_dialog("Number of Images")
-            if option:# and self.imgs2Safe:
-                self.label = option
-                self.safe = True
+            self._save_button.setText("STOP")
+            self.save = True
 
 
 
@@ -151,17 +166,13 @@ class AnnotationPlugin(Plugin):
         self.store_image(image, bbox)
 
 
-    def store_image(self, image, bbox):
+    def store_image(self, image, bbox, cls_id):
         """
         Store the image
         :param image: Image we would like to store
         """
-        print(self.output_directory)
-        print(image)
-        print(self.label)
         if image is not None and self.label is not None and self.output_directory is not None:
-            cls_id = list(self.labels).index(self.label)
-            image_writer.write_annotated(self.output_directory, image, self.label, cls_id, bbox, self._test_button.isChecked())
+            image_writer.write_annotated(self.output_directory, image, self.label, self.cls_id, bbox, self._test_button.isChecked())
 
     def _get_output_directory(self):
         """
@@ -179,16 +190,23 @@ class AnnotationPlugin(Plugin):
 
         self.output_directory = path
         self._output_path_edit.setText("Saving images to %s" % path)
+        labels = self._read_labels()
+        self._set_labels(labels)
 
-    def _get_labels(self):
+    def _add_label(self):
         """
-        Gets and sets the labels
+        Gets and adds a label
         """
-        text, ok = QInputDialog.getText(self._widget, 'Text Input Dialog', 'Type labels semicolon separated, e.g. banana;apple:',
-            QLineEdit.Normal, ";".join(self.labels))
-        if ok:
-            labels = set([_sanitize(label) for label in str(text).split(";") if _sanitize(label)]) # Sanitize to alphanumeric, exclude spaces
-            self._set_labels(labels)
+
+        label = self._label_edit.text()
+        labelNames = [i[0] for i in self.labels]
+        if not label in list(labelNames):
+            self.labels.append((label,0))
+            self._option_selector.addItem(label)
+            with open("{}/labels.txt".format(self.output_directory), 'a') as file:
+                file.write("{}\n".format(label))
+        self._label_edit.setText('')
+
 
     def _set_labels(self, labels):
         """
@@ -197,9 +215,28 @@ class AnnotationPlugin(Plugin):
         """
         if not labels:
             labels = []
+        else:
+            for label in labels:
+                self.labels.append(label)
+                self._option_selector.addItem(label[0])
 
-        self.labels = labels
-        self._labels_edit.setText("%s" % labels)
+    def _read_labels(self):
+        labels_tmp = []
+        try:
+            with open('{}/labels.txt'.format(self.output_directory), 'r') as f:
+                labels_tmp = f.readlines()
+            labels_tmp = [(i.rstrip(),0) for i in labels_tmp]
+        except:
+            pass
+
+        labels = []
+        for label in labels_tmp:
+            label = list(label)
+            path = "{}/{}/images".format(self.output_directory, label[0])
+            if os.path.isdir(path):
+                label[1] = len([name for name in os.listdir(path) if os.path.isfile("{}/{}".format(path,name))])
+            labels.append(label)
+        return labels
 
     def _image_callback(self, msg):
         """
@@ -212,15 +249,9 @@ class AnnotationPlugin(Plugin):
             eros_size = self._sliderEros.value()
             self._image_widget.set_image(cv_image, dil_size, eros_size)
 
-            if self.safe:# and self.imgs2Safe > 0:
+            if self.save:
                 self.numImg += 1
-                print(self.numImg)
-                #if self.numImg % self.interval == 0:
                 self.store_image(self._image_widget.get_image(), self._image_widget.get_bbox())
-                self.imgs2Safe -= 1
-            #elif self.safe and self.imgs2Safe == 0:
-            #    info_dialog('finished', 'Dataset created!')
-            #    self.safe = False
         except CvBridgeError as e:
             rospy.logerr(e)
 
@@ -302,6 +333,7 @@ class AnnotationPlugin(Plugin):
             labels = instance_settings.value("labels")
         except:
             pass
-        self._set_labels(labels)
+        #labels = self._read_labels()
+        #self._set_labels(labels)
         self._create_service_client(str(instance_settings.value("service_name", "/image_recognition/my_service")))
         self._create_subscriber(str(instance_settings.value("topic_name", "/xtion/rgb/image_raw")))
