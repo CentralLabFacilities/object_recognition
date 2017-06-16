@@ -149,6 +149,7 @@ class AnnotationPlugin(Plugin):
             self._save_button.setText("START")
             self.save = False
             cls = self.labels[self.cls_id]
+            self.labels[self.cls_id][1] = self.numImg
             cls = list(cls)
             cls[1] = self.numImg
         else:
@@ -251,7 +252,7 @@ class AnnotationPlugin(Plugin):
 
             if self.save:
                 self.numImg += 1
-                self._imgNum_label.setText(self.numImg)
+                self._imgNum_label.setText(str(self.numImg))
                 self.store_image(self._image_widget.get_image(), self._image_widget.get_bbox(), self.cls_id)
         except CvBridgeError as e:
             rospy.logerr(e)

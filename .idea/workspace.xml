@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="bc874212-2076-45e5-b11d-5b93cf3b41fb" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/image_recognition_rqt/src/image_recognition_rqt/annotation.py" afterPath="$PROJECT_DIR$/image_recognition_rqt/src/image_recognition_rqt/annotation.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -47,8 +46,8 @@
       <file leaf-file-name="annotation.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/image_recognition_rqt/src/image_recognition_rqt/annotation.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="432">
-              <caret line="253" column="54" lean-forward="false" selection-start-line="253" selection-start-column="54" selection-end-line="253" selection-end-column="54" />
+            <state relative-caret-position="270">
+              <caret line="151" column="53" lean-forward="false" selection-start-line="151" selection-start-column="53" selection-end-line="151" selection-end-column="53" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -545,8 +544,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/image_recognition_rqt/src/image_recognition_rqt/annotation.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="432">
-          <caret line="253" column="54" lean-forward="false" selection-start-line="253" selection-start-column="54" selection-end-line="253" selection-end-column="54" />
+        <state relative-caret-position="270">
+          <caret line="151" column="53" lean-forward="false" selection-start-line="151" selection-start-column="53" selection-end-line="151" selection-end-column="53" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>
