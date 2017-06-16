@@ -150,8 +150,6 @@ class AnnotationPlugin(Plugin):
             self.save = False
             cls = self.labels[self.cls_id]
             self.labels[self.cls_id][1] = self.numImg
-            cls = list(cls)
-            cls[1] = self.numImg
         else:
             self._save_button.setText("STOP")
             self.save = True
