@@ -4,6 +4,7 @@ from fractions import Fraction
 
 width = 640
 height = 480
+factor = 0.8
 
 def fix(file):
 
@@ -17,10 +18,10 @@ def fix(file):
     x3 = float(content[3])
     x4 = float(content[4])
 
-    x1_new = x1 + x3/4
-    x2_new = x2 + x4/4
-    x3_new = x3/2
-    x4_new = x4/2
+    x1_new = x1 + x3*((1-factor)/2)
+    x2_new = x2 + x4*((1-factor)/2)
+    x3_new = x3*factor
+    x4_new = x4*factor
 
     new_content = [content[0], x1_new, x2_new, x3_new, x4_new]
 
@@ -46,7 +47,7 @@ if __name__ == "__main__":
 
     # some warning
     print 'This script will search for ALL *.txt files recursively in the given path \033[1m' + path + '.\033[0m'
-    print 'For every *.txt file found, it will fix the boundingbox error where width & height were switched.'
+    print 'For every *.txt file found, it will change the boundingbox size.'
     print 'Make sure, that all *.txt files are in the correct format!'
     print 'Otherwise, you will encounter some strange errors or this script will simply fail.\n'
 
