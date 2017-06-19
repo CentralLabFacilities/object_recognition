@@ -40,6 +40,7 @@ class ImageWidget(QWidget):
 
         self.detections = []
         self.bbox = None
+	self.mask = None
 
 
     def paintEvent(self, event):
@@ -95,6 +96,18 @@ class ImageWidget(QWidget):
         fgMaskMOG2 = cv2.dilate(fgMaskMOG2, elementDi)
 
 
+	#copy image to different background
+	mask = fgMaskMOG2
+	res = cv2.bitwise_and(image,image,mask = mask)
+	mask_inv = cv2.bitwise_not(mask)
+	back = cv2.imread('rgb-0.ppm',1)
+	res_background = cv2.bitwise_and(back,back,mask = mask_inv)
+	rows,cols,channels = res.shape
+
+	result = res_background + res
+	image = result
+	cv2.imshow('result',image)
+
         thresh = 1
         fgMaskMOG2 = cv2.blur(fgMaskMOG2, (6, 6))
         fgMaskMOG2 = cv2.Canny(fgMaskMOG2, thresh, thresh * 2, 3)
@@ -102,7 +115,6 @@ class ImageWidget(QWidget):
         elementDi = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * dil_size + 1, 2 * dil_size + 1),
                                               (dil_size, dil_size))
         fgMaskMOG2 = cv2.dilate(fgMaskMOG2, elementDi)
-
         fgMaskMOG2, contours, hierarchy = cv2.findContours(fgMaskMOG2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         largest_area = 0
@@ -136,7 +148,8 @@ class ImageWidget(QWidget):
         self._qt_image = _convert_cv_to_qt_image(image)
         self.update()
 
-
+    def get_mask(self):
+	return self.mask
 
     def get_bbox(self):
         return self.bbox
