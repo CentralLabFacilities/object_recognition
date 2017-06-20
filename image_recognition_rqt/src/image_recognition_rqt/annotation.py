@@ -240,16 +240,17 @@ class AnnotationPlugin(Plugin):
         Called when a new sensor_msgs/Image is coming in
         :param msg: The image messaeg
         """
+
         try:
             cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
             dil_size = self._sliderDil.value()
             eros_size = self._sliderEros.value()
-            self._image_widget.set_image(cv_image, dil_size, eros_size)
+            self.image = self._image_widget.set_image(cv_image, dil_size, eros_size)
 
             if self.save:
                 self.numImg += 1
                 self._imgNum_label.setText(str(self.numImg))
-                self.store_image(self._image_widget.get_image(), self._image_widget.get_bbox(), self.cls_id)
+                self.store_image(self._image_widget.get_bg_image(), self._image_widget.get_bbox(), self.cls_id)
         except CvBridgeError as e:
             rospy.logerr(e)
 
