@@ -98,7 +98,7 @@ class ImageWidget(QWidget):
 
 
 	#copy image to different background
-	back = cv2.imread('rgb-0.ppm',1)
+	back = cv2.imread('backgrounds/rgb-1577.ppm',1)
 	mask1 = fgMaskMOG2
 
         thresh = 1
@@ -119,14 +119,19 @@ class ImageWidget(QWidget):
                 largest_area = a
                 largest_contour_index = i
         if len(contours) > 0:
-            cv2.convexHull(contours[largest_contour_index], contours[largest_contour_index])
+            hull = cv2.convexHull(contours[largest_contour_index], contours[largest_contour_index])
+            mask_poly = np.zeros(fgMaskMOG2.shape, dtype=np.uint8)
+	    cv2.fillConvexPoly(mask_poly, hull.astype(np.int32), (255))
+	    #cv2.imshow('mask test',mask_poly)
+
             bbox = cv2.boundingRect(contours[largest_contour_index])
             mask = np.zeros(fgMaskMOG2.shape, dtype=np.uint8)
             rect = cv2.minAreaRect(contours[largest_contour_index])
             box = cv2.boxPoints(rect)
             box = np.int0(box)
             cv2.rectangle(mask, (bbox[0], bbox[1]), (bbox[0]+bbox[2], bbox[1]+bbox[3]), 255, thickness=-1)
-	    mask1 = cv2.bitwise_and(mask1, mask1, mask = mask)
+	    mask1 = cv2.bitwise_and(mask_poly, mask_poly, mask = mask)
+	    self.mask = mask1
 	    #cv2.imshow('mask_res',mask1)
             fg = cv2.bitwise_and(image,image, mask = mask1)
             mask1_inv = cv2.bitwise_not(mask1)
@@ -134,7 +139,7 @@ class ImageWidget(QWidget):
             result = bg + fg
 	    #cv2.imshow('img', result)
 	    image = result
-	    self._bg_image = image
+	    #self._bg_image = image
 	    self.bbox = cv2.boundingRect(contours[largest_contour_index])
 	    self.bbox = (self.bbox[0], self.bbox[0] + self.bbox[2], self.bbox[1], self.bbox[1] + self.bbox[3])
 	    width = self.bbox[1] - self.bbox[0]
@@ -148,6 +153,9 @@ class ImageWidget(QWidget):
 
     def get_bg_image(self):
         return self._bg_image
+
+    def get_mask(self):
+        return self.mask
 
     def set_image(self, image, dil_size, eros_size):
         """

@@ -17,7 +17,7 @@ def convert(size, box):
 
 
 
-def write_annotated(dir_path, image, label, cls_id, bbox, test=False):
+def write_annotated(dir_path, image, mask, label, cls_id, bbox, test=False):
     """
     Write an image with an annotation to a folder
     :param dir_path: The base directory we are going to write to
@@ -49,6 +49,7 @@ def write_annotated(dir_path, image, label, cls_id, bbox, test=False):
     # write image in image_dir
     filename = "{}-{}".format(label, datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S_%f"))
     cv2.imwrite("{}/{}.jpg".format(image_dir, filename), image)
+    cv2.imwrite("{}/{}_mask.jpg".format(image_dir, filename), mask)
     #filename = "/home/sarah/object_recogntion/%s.jpg" % (datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S_%f"))
     #cv2.imwrite(filename, image)
 

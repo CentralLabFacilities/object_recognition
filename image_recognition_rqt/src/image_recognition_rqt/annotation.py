@@ -163,13 +163,13 @@ class AnnotationPlugin(Plugin):
         self.store_image(image, bbox)
 
 
-    def store_image(self, image, bbox, cls_id):
+    def store_image(self, image, bbox, cls_id, mask):
         """
         Store the image
         :param image: Image we would like to store
         """
         if image is not None and self.label is not None and self.output_directory is not None:
-            image_writer.write_annotated(self.output_directory, image, self.label, self.cls_id, bbox, self._test_button.isChecked())
+            image_writer.write_annotated(self.output_directory, image, mask, self.label, self.cls_id, bbox, self._test_button.isChecked())
 
     def _get_output_directory(self):
         """
@@ -250,7 +250,7 @@ class AnnotationPlugin(Plugin):
             if self.save:
                 self.numImg += 1
                 self._imgNum_label.setText(str(self.numImg))
-                self.store_image(self._image_widget.get_bg_image(), self._image_widget.get_bbox(), self.cls_id)
+                self.store_image(self._image_widget.get_image(), self._image_widget.get_bbox(), self.cls_id, self._image_widget.get_mask())
         except CvBridgeError as e:
             rospy.logerr(e)
 
