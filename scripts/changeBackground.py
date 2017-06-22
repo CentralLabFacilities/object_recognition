@@ -35,11 +35,17 @@ if __name__ == "__main__":
 		fg = cv2.imread(imagepath, 1)
 		print(imagepath)
 		savepath = "/".join(imagepath.split('/')[:-1])
-		#print(imagepath)
+		labelpath = "/".join(imagepath.split('/')[:-2])
+		labelpath = "{}/labels/".format(labelpath)
+		txtname = "/".join(imagepath.split('/')[-1:])
+		txtname = "/".join(txtname.split('.')[:-1])
+		labelpath = "{}{}".format(labelpath,txtname)
+		labelFilePath = "{}.txt".format(labelpath)
+		labelFile = open(labelFilePath, 'r')
+		bbox = labelFile.readlines()[0]
 		pathcut = imagepath.split('.')
 		maskpath = '{}_mask.{}'.format(pathcut[0],pathcut[1])
 		mask = cv2.imread(maskpath, 0)
-		#print(maskpath)
 		num = 0
 		for bgpath in bgList:
 			bg = cv2.imread(bgpath, 1)
@@ -49,6 +55,10 @@ if __name__ == "__main__":
 				#cv2.imshow('new', newimage)
 				#cv2.waitKey(5)
 				newsavepath = "{}_masked-{}.{}".format(pathcut[0],num,pathcut[1])
+				newlabelpath = "{}_masked-{}.txt".format(labelpath,num)
+				newLabelFile = open(newlabelpath, 'a')
+				newLabelFile.write("{}".format(bbox))
+				#print(newlabelpath)
 				cv2.imwrite(newsavepath, newimage)
 				num += 1
 				#print(newsavepath)
