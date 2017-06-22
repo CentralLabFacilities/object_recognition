@@ -6,21 +6,54 @@ from fractions import Fraction
 
 
 def change_background(fg, bg, mask):
-        mask_inv = cv2.bitwise_not(mask)
+	mask_inv = cv2.bitwise_not(mask)
 	fg = cv2.bitwise_and(fg, fg, mask = mask)
 	bg = cv2.bitwise_and(bg, bg, mask = mask_inv)
-	cv2.imwrite('fg.jpg',fg)
-	cv2.imwrite('bg.jpg',bg)
-	res = fg + bg
-	cv2.imshow('res', res)
-	cv2.imwrite('res.jpg',res)
+	#cv2.imwrite('fg.jpg',fg)
+	#cv2.imwrite('bg.jpg',bg)
+	res = bg + fg
+	return res
+	#cv2.imwrite('res.jpg',res)
 
 
 if __name__ == "__main__":
 
-    fg = cv2.imread('biscuits.jpg',1)
-    bg = cv2.imread('rgb-0.ppm',1)
-    mask = cv2.imread('biscuits_mask.jpg',0)
-    change_background(fg, bg, mask)
+	if len(sys.argv) < 3:
+		print("usage of the script: python changeBackground.py <train.txt> <backgroundpath>")
+		exit(0)
+	
+	with open(sys.argv[1], 'r') as file:
+		imageList = [x.split('\n')[0] for x in file.readlines()]
 
-    print '\033[1m\033[92mDone!\033[0m'
+	bgList = []
+	for file in os.listdir(sys.argv[2]):
+		if file.endswith(".ppm"):
+			bgList.append("{}/{}".format(sys.argv[2], file))
+	
+	trainFile = open(sys.argv[1], 'a')
+	for	imagepath in imageList:
+		fg = cv2.imread(imagepath, 1)
+		print(imagepath)
+		savepath = "/".join(imagepath.split('/')[:-1])
+		#print(imagepath)
+		pathcut = imagepath.split('.')
+		maskpath = '{}_mask.{}'.format(pathcut[0],pathcut[1])
+		mask = cv2.imread(maskpath, 0)
+		#print(maskpath)
+		num = 0
+		for bgpath in bgList:
+			bg = cv2.imread(bgpath, 1)
+			#print(bgpath)
+			try:
+				newimage = change_background(fg, bg, mask)
+				#cv2.imshow('new', newimage)
+				#cv2.waitKey(5)
+				newsavepath = "{}_masked-{}.{}".format(pathcut[0],num,pathcut[1])
+				cv2.imwrite(newsavepath, newimage)
+				num += 1
+				#print(newsavepath)
+				trainFile.write("{}\n".format(newsavepath))
+			except:
+				print('failed')
+				pass
+	trainFile.close()
