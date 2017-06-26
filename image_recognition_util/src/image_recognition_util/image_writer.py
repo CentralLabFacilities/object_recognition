@@ -29,12 +29,20 @@ def write_annotated(dir_path, image, mask, label, cls_id, bbox, test=False):
     if dir_path is None:
         return False
 
+    tensor_path = dir_path + "/tensorset"
+    darknet_path = dir_path + "/darkset"
+
     # Check if path exists, otherwise created it
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
+    if not os.path.exists(tensor_path):
+        os.makedirs(tensor_path)
+    if not os.path.exists(darknet_path):
+        os.makedirs(darknet_path)
 
     # Main directory for files of class <label>
-    class_dir = dir_path + "/" + label
+    class_dir = darknet_path + "/" + label
+    image_dir_tensor = tensor_path + "/" + label
+    if not os.path.exists(image_dir_tensor):
+        os.makedirs(image_dir_tensor)
 
     # Directory for label files
     label_dir = class_dir + "/labels"
@@ -53,6 +61,10 @@ def write_annotated(dir_path, image, mask, label, cls_id, bbox, test=False):
     #filename = "/home/sarah/object_recogntion/%s.jpg" % (datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S_%f"))
     #cv2.imwrite(filename, image)
 
+    #save bounding box for tensorflow train set
+    tensorbox = image[bbox[2]:bbox[3], bbox[0]:bbox[1]]
+    cv2.imwrite("{}/{}.jpg".format(image_dir_tensor,filename), tensorbox)
+
     # convert bbox for darknet
     h, w = image.shape[:2] # changed w, h to h, w -- thilo
     bb = convert((w,h), bbox)
@@ -63,9 +75,9 @@ def write_annotated(dir_path, image, mask, label, cls_id, bbox, test=False):
 
     # safe image path to list for training/test set
     if not test:
-        file_list = open("{}/train.txt".format(dir_path),'a')
+        file_list = open("{}/train.txt".format(darknet_path),'a')
     else:
-        file_list = open("{}/test.txt".format(dir_path),'a')
+        file_list = open("{}/test.txt".format(darknet_path),'a')
 
     file_list.write("{}/{}.jpg\n".format(image_dir, filename))
     file_list.close()
