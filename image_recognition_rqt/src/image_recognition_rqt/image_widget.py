@@ -142,8 +142,7 @@ class ImageWidget(QWidget):
 	    #self._bg_image = image
 	    self.bbox = cv2.boundingRect(contours[largest_contour_index])
 	    self.bbox = (self.bbox[0], self.bbox[0] + self.bbox[2], self.bbox[1], self.bbox[1] + self.bbox[3])
-	    self.bbox = (self.bbox[0], self.bbox[1], self.bbox[2], self.bbox[3])
-            cv2.rectangle(image, (self.bbox[0], self.bbox[2]), (self.bbox[1], self.bbox[3]), (0, 0, 255))
+	    cv2.rectangle(image, (self.bbox[0], self.bbox[2]), (self.bbox[1], self.bbox[3]), (0, 0, 255))
         return image
 
     def get_image(self):

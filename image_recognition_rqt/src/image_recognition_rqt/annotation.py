@@ -249,7 +249,7 @@ class AnnotationPlugin(Plugin):
             self.image = self._image_widget.set_image(cv_image, dil_size, eros_size)
 
             if self.save:
-		if self.counter == 10:
+		if self.counter == 5:
             	    self.numImg += 1
             	    self._imgNum_label.setText(str(self.numImg))
             	    self.store_image(self._image_widget.get_image(), self._image_widget.get_bbox(), self.cls_id, self._image_widget.get_mask())
