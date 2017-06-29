@@ -30,6 +30,7 @@ class ImageWidget(QWidget):
         """
         super(ImageWidget, self).__init__(parent)
         self._cv_image = None
+	self._bg_image = None
         self._qt_image = QImage()
         self.pMOG2 = cv2.createBackgroundSubtractorMOG2(500, 16, True)
 
@@ -40,6 +41,7 @@ class ImageWidget(QWidget):
 
         self.detections = []
         self.bbox = None
+	self.mask = None
 
 
     def paintEvent(self, event):
@@ -95,6 +97,10 @@ class ImageWidget(QWidget):
         fgMaskMOG2 = cv2.dilate(fgMaskMOG2, elementDi)
 
 
+	#copy image to different background
+	back = cv2.imread('backgrounds/rgb-1577.ppm',1)
+	mask1 = fgMaskMOG2
+
         thresh = 1
         fgMaskMOG2 = cv2.blur(fgMaskMOG2, (6, 6))
         fgMaskMOG2 = cv2.Canny(fgMaskMOG2, thresh, thresh * 2, 3)
@@ -102,7 +108,6 @@ class ImageWidget(QWidget):
         elementDi = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * dil_size + 1, 2 * dil_size + 1),
                                               (dil_size, dil_size))
         fgMaskMOG2 = cv2.dilate(fgMaskMOG2, elementDi)
-
         fgMaskMOG2, contours, hierarchy = cv2.findContours(fgMaskMOG2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         largest_area = 0
@@ -114,18 +119,42 @@ class ImageWidget(QWidget):
                 largest_area = a
                 largest_contour_index = i
         if len(contours) > 0:
-            cv2.convexHull(contours[largest_contour_index], contours[largest_contour_index])
-            cv2.imshow('contour', contours[largest_contour_index])
-            self.bbox = cv2.boundingRect(contours[largest_contour_index])
-            self.bbox = (self.bbox[0], self.bbox[0] + self.bbox[2], self.bbox[1], self.bbox[1] + self.bbox[3])
-	    width = self.bbox[1] - self.bbox[0]
-	    height = self.bbox[3] - self.bbox[2]
-	    self.bbox = (self.bbox[0] + width/4, self.bbox[1] - width/4, self.bbox[2] + height/4, self.bbox[3] - height/4)
-        cv2.rectangle(image, (self.bbox[0], self.bbox[2]), (self.bbox[1], self.bbox[3]), (0, 0, 255))
+
+            hull = cv2.convexHull(contours[largest_contour_index], contours[largest_contour_index])
+            mask_poly = np.zeros(fgMaskMOG2.shape, dtype=np.uint8)
+	    cv2.fillConvexPoly(mask_poly, hull.astype(np.int32), (255))
+	    #cv2.imshow('mask test',mask_poly)
+
+            bbox = cv2.boundingRect(contours[largest_contour_index])
+            mask = np.zeros(fgMaskMOG2.shape, dtype=np.uint8)
+            rect = cv2.minAreaRect(contours[largest_contour_index])
+            box = cv2.boxPoints(rect)
+            box = np.int0(box)
+            cv2.rectangle(mask, (bbox[0], bbox[1]), (bbox[0]+bbox[2], bbox[1]+bbox[3]), 255, thickness=-1)
+	    mask1 = cv2.bitwise_and(mask_poly, mask_poly, mask = mask)
+	    self.mask = mask1
+	    #cv2.imshow('mask_res',mask1)
+            fg = cv2.bitwise_and(image,image, mask = mask1)
+            mask1_inv = cv2.bitwise_not(mask1)
+            bg = cv2.bitwise_and(back,back, mask = mask1_inv)
+            result = bg + fg
+	    #cv2.imshow('img', result)
+	    #image = result
+	    #self._bg_image = image
+	    self.bbox = cv2.boundingRect(contours[largest_contour_index])
+	    self.bbox = (self.bbox[0], self.bbox[0] + self.bbox[2], self.bbox[1], self.bbox[1] + self.bbox[3])
+	    cv2.rectangle(image, (self.bbox[0], self.bbox[2]), (self.bbox[1], self.bbox[3]), (0, 0, 255))
+
         return image
 
     def get_image(self):
         return self._cv_image
+
+    def get_bg_image(self):
+        return self._bg_image
+
+    def get_mask(self):
+        return self.mask
 
     def set_image(self, image, dil_size, eros_size):
         """
@@ -136,8 +165,10 @@ class ImageWidget(QWidget):
         image = self.calc_bbox(image, dil_size, eros_size)
         self._qt_image = _convert_cv_to_qt_image(image)
         self.update()
+	return image
 
-
+    def get_mask(self):
+	return self.mask
 
     def get_bbox(self):
         return self.bbox
