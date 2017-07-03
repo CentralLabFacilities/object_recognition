@@ -71,8 +71,9 @@ def write_annotated(dir_path, image, mask, label, cls_id, bbox, test=False):
     bb = convert((w,h), bbox)
 
     # write converted bbox as label in label_dir
-    label_file = open("{}/{}.txt".format(label_dir, filename), 'w')
-    label_file.write(str(cls_id) + " " + " ".join([str(a) for a in bb]) + '\n')
+    if cls_id is not None:
+    	label_file = open("{}/{}.txt".format(label_dir, filename), 'w')
+    	label_file.write(str(cls_id) + " " + " ".join([str(a) for a in bb]) + '\n')
 
     # safe image path to list for training/test set
     if not test:
