@@ -18,11 +18,26 @@ def _convert_cv_to_qt_image(cv_image):
     return QImage(cv_image, width, height, byte_value, QImage.Format_RGB888)
 
 
+def _get_roi_from_rect(rect):
+    """
+    Returns the ROI from a rectangle, the rectangle can have the top and bottom flipped
+    :param rect: Rect to get roi from
+    :return: x, y, width, height of ROI
+    """
+    x_min = min(rect.topLeft().x(), rect.bottomRight().x())
+    y_min = min(rect.topLeft().y(), rect.bottomRight().y())
+    x_max = max(rect.topLeft().x(), rect.bottomRight().x())
+    y_max = max(rect.topLeft().y(), rect.bottomRight().y())
+
+    return x_min, y_min, x_max - x_min, y_max - y_min
+
+
+
 class ImageWidget(QWidget):
 
     
 
-    def __init__(self, parent, image_callback):
+    def __init__(self, parent, image_callback, clear_on_click=False):
         """
         Image widget that allows drawing rectangles and firing a image_roi_callback
         :param parent: The parent QT Widget
@@ -38,8 +53,10 @@ class ImageWidget(QWidget):
 
         self.dragging = False
         self.drag_offset = QPoint()
+	self.image_callback = image_callback
 
         self.detections = []
+	self._clear_on_click = clear_on_click
         self.bbox = None
 	self.mask = None
 
@@ -61,10 +78,13 @@ class ImageWidget(QWidget):
             painter.setPen(QPen(Qt.magenta, 5.0))
             painter.drawRect(rect)
 
+	    painter.setPen(QPen(Qt.magenta, 5.0))
+            painter.drawText(rect, Qt.AlignCenter, label)
+
+        painter.end()
 
 
-
-        #self.image_callback = image_callback
+        
 
     def calc_bbox(self, image, dil_size, eros_size):
         fgMaskMOG2 = self.pMOG2.apply(image, 0.001)
@@ -156,13 +176,19 @@ class ImageWidget(QWidget):
     def get_mask(self):
         return self.mask
 
-    def set_image(self, image, dil_size, eros_size):
+    def get_roi_image(self):
+        # Flip if we have dragged the other way
+        x, y, width, height = _get_roi_from_rect(self.clip_rect)
+	self.bbox = (x, x+width, y, y+height)
+
+        return self._cv_image[y:y + height, x:x + width]
+
+    def set_image(self, image):
         """
         Sets an opencv image to the widget
         :param image: The opencv image
         """
         self._cv_image = copy.copy(image)
-        image = self.calc_bbox(image, dil_size, eros_size)
         self._qt_image = _convert_cv_to_qt_image(image)
         self.update()
 	return image
@@ -172,3 +198,61 @@ class ImageWidget(QWidget):
 
     def get_bbox(self):
         return self.bbox
+
+    def add_detection(self, x, y, width, height, label):
+        """
+        Adds a detection to the image
+        :param x: ROI_X
+        :param y: ROI_Y
+        :param width: ROI_WIDTH
+        :param height: ROI_HEIGHT
+        :param label: Text to draw
+        """
+        roi_x, roi_y, roi_width, roi_height = _get_roi_from_rect(self.clip_rect)
+        self.detections.append((QRect(x+roi_x, y+roi_y, width, height), label))
+
+    def clear(self):
+        self.detections = []
+        self.clip_rect = QRect(0, 0, 0, 0)
+
+    def get_roi(self):
+        return _get_roi_from_rect(self.clip_rect)
+
+    def mousePressEvent(self, event):
+        """
+        Mouspress callback
+        :param event: mouse event
+        """
+        # Check if we clicked on the img
+        if event.pos().x() < self._qt_image.width() and event.pos().y() < self._qt_image.height():
+            if self._clear_on_click:
+                self.clear()
+            self.clip_rect.setTopLeft(event.pos())
+            self.clip_rect.setBottomRight(event.pos())
+            self.dragging = True
+
+    def mouseMoveEvent(self, event):
+        """
+        Mousemove event
+        :param event: mouse event
+        """
+        if not self.dragging:
+            return
+
+        self.clip_rect.setBottomRight(event.pos())
+        
+        self.update()
+    
+    def mouseReleaseEvent(self, event):
+        """
+        Mouse release event
+        :param event: mouse event
+        """
+        if not self.dragging:
+            return
+
+        roi_image = self.get_roi_image()
+        if roi_image is not None:
+            self.image_callback(roi_image)
+
+        self.dragging = False

@@ -246,7 +246,8 @@ class AnnotationPlugin(Plugin):
             cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
             dil_size = self._sliderDil.value()
             eros_size = self._sliderEros.value()
-            self.image = self._image_widget.set_image(cv_image, dil_size, eros_size)
+	    self.cv_image = self._image_widget.calc_bbox(cv_image, dil_size, eros_size)
+            self.image = self._image_widget.set_image(cv_image)
 
             if self.save:
 		if self.counter == 5:

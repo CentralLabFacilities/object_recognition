@@ -14,4 +14,36 @@
       <statustip>Annotate regions in images and write the result to disk.</statustip>
     </qtgui>
   </class>
+  <class name="Annotation Plugin" type="image_recognition_rqt.annotation_testset.AnnotationPlugin" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      A Python GUI plugin for annotating testset image regions
+    </description>
+    <qtgui>
+        <group>
+            <label>Image recognition</label>
+            <icon type="theme">folder</icon>
+            <statustip>Plugins related to image recogition.</statustip>
+        </group>
+      <label>Label Annotation</label>
+      <icon type="theme">system-help</icon>
+      <statustip>Annotate regions in images and write the result to disk.</statustip>
+    </qtgui>
+  </class>
+
+  <class name="Test Plugin" type="image_recognition_rqt.test.TestPlugin" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      A Python GUI plugin for testing the image_recognition_msgs interface
+    </description>
+    <qtgui>
+        <group>
+            <label>Image recognition</label>
+            <icon type="theme">folder</icon>
+            <statustip>Plugins related to image recogition.</statustip>
+        </group>
+      <label>Image recognition test</label>
+      <icon type="theme">system-help</icon>
+      <statustip>Test image recognition using an sensor_msgs/Image input feed.</statustip>
+    </qtgui>
+</class>
+
 </library>
