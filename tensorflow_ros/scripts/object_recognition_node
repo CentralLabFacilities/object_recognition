@@ -17,8 +17,8 @@ import tensorflow as tf
 import numpy as np
 
 # TU/e Robotics
-from image_recognition_msgs.srv import Recognize
-from image_recognition_msgs.msg import Recognition, CategoryProbability
+from object_recognition_msgs.srv import Recognize
+from object_recognition_msgs.msg import Recognition, CategoryProbability
 from image_recognition_util import image_writer_test_gui
 
 

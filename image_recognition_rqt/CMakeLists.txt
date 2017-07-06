@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   rqt_gui
   rqt_gui_py
   image_recognition_util
+  object_recognition_msgs
   sensor_msgs
 )
 

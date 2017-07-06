@@ -3,7 +3,7 @@ project(tensorflow_ros)
 
 find_package(catkin REQUIRED COMPONENTS
   rospy
-  image_recognition_msgs
+  object_recognition_msgs
   image_recognition_util
 )
 
@@ -14,5 +14,6 @@ catkin_package()
 install(PROGRAMS
   scripts/retrain
   scripts/object_recognition_node
+  scripts/segment_classify_bridge.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
