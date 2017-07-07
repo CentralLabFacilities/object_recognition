@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-from object_recognition_msgs.srv import Recognize
-from object_recognition_msgs.msg import Recognition, CategoryProbability, Hypothesis
-from object_recognition_msgs.srv import Classify
+from object_tracking_msgs.srv import Recognize
+from object_tracking_msgs.msg import Recognition, CategoryProbability, Hypothesis
+from object_tracking_msgs.srv import Classify
 import rospy
 
 
