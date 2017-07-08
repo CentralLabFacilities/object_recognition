@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from object_tracking_msgs.srv import Recognize
-from object_tracking_msgs.msg import Recognition, CategoryProbability, Hypothesis
+from object_tracking_msgs.msg import Recognition, CategoryProbability, Hypothesis, ObjectHypothesis
 from object_tracking_msgs.srv import Classify
 import rospy
 
@@ -33,7 +33,8 @@ class segmenation_classification_bridge:
             '''
             label = Hypothesis(label="unknown", reliability=1)
             labels.append(label)
-            response.append(labels)
+            hypo = ObjectHypothesis(hypothese=labels)
+            response.append(hypo)
         return {"hypotheses":response}
 
 if __name__ == "__main__":
