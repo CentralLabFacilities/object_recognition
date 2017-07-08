@@ -20,21 +20,20 @@ class segmenation_classification_bridge:
         print("got request")
 
         response = []
-        label = Hypothesis(labels="unknown", reliability=[1])
         for hypothese in req.objects:
+            labels = []
             '''
             result = self.classify(hypothese)
             for r in result.recognitions:
-                text_array = []
-                best = CategoryProbability(label="unknown", probability=r.categorical_distribution.unknown_probability)
-                for p in r.categorical_distribution.probabilities:
-                    text_array.append("%s: %.2f" % (p.label, p.probability))
-                    if p.probability > best.probability:
-                        best = p
-                        
-                '''
-
-            response.append(label)
+                objects = sorted(r.categorical_distribution.probabilities, lambda x: x.probability)
+                for p in objects:
+                    #label = Hypothesis(label=p.label, reliability=p.probability)
+                    labels.append(label)
+                    
+            '''
+            label = Hypothesis(label="unknown", reliability=1)
+            labels.append(label)
+            response.append(labels)
         return {"hypotheses":response}
 
 if __name__ == "__main__":
