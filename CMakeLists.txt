@@ -1,5 +1,0 @@
-add_subdirectory(image_recognition_rqt)
-add_subdirectory(image_recognition_util)
-add_subdirectory(tensorflow_ros)
-add_subdirectory(tensorflow_ros_rqt)
-
