@@ -33,7 +33,7 @@ class segmenation_classification_bridge:
             '''
             label = Hypothesis(label="unknown", reliability=1)
             labels.append(label)
-            hypo = ObjectHypothesis(hypothese=labels)
+            hypo = ObjectHypothesis(hypotheses=labels)
             response.append(hypo)
         return {"hypotheses":response}
 
