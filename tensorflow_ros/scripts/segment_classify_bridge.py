@@ -20,7 +20,7 @@ class segmenation_classification_bridge:
         print("got request")
 
         response = []
-        label = Hypothesis(labels=["unknown"], reliability=[1])
+        label = Hypothesis(labels="unknown", reliability=[1])
         for hypothese in req.objects:
             '''
             result = self.classify(hypothese)
