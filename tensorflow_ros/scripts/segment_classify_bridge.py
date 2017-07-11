@@ -47,15 +47,15 @@ class segmenation_classification_bridge:
 		print "Visualization"
 		
 
-		bridge = CvBridge()
-		for im in req.objects:
-			cv_image = bridge.imgmsg_to_cv2(im, desired_encoding="bgr8")
-			cv2.namedWindow('test')
-			cv2.imshow('test', cv_image)		
+		#bridge = CvBridge()
+		#for im in req.objects:
+			#cv_image = bridge.imgmsg_to_cv2(im, desired_encoding="rgb8")
+			#cv2.namedWindow('test')
+			#cv2.imshow('test', cv_image)		
 			#cv2.imshow(''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10)),cv_image)
-			cv2.waitKey(0)
-			cv2.destroyWindow('test')
-		cv2.destroyAllWindows()
+			#cv2.waitKey(0)
+			#cv2.destroyWindow('test')
+		#cv2.destroyAllWindows()
 
 		#image_message_1 = req.objects[0]
 		#image_message_2 = req.objects[1]
@@ -71,7 +71,7 @@ class segmenation_classification_bridge:
 		#cv2.waitKey(3)
 		#cv2.destroyAllWindows()
 
-		print "done"    		
+		#print "done"    		
 	
 
 

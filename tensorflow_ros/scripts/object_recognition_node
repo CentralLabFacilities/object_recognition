@@ -69,7 +69,7 @@ class TensorflowObjectRecognition:
         :return: image_recognition_msgs.srv.RecognizeResponse
         """
         try:
-            self._bgr_image = self._bridge.imgmsg_to_cv2(req.image, "bgr8")
+            self._bgr_image = self._bridge.imgmsg_to_cv2(req.image, "rgb8")
         except CvBridgeError as e:
             error_msg = "Could not convert to opencv image: %s" % e
             rospy.logerr(error_msg)
