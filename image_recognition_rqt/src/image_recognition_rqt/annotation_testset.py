@@ -18,11 +18,11 @@ import rosservice
 from image_widget import ImageWidget
 from dialogs import option_dialog, warning_dialog
 
-from image_recognition_msgs.msg import Annotation
+from object_tracking_msgs.msg import Annotation
 from image_recognition_util import image_writer
 from sensor_msgs.msg import RegionOfInterest
 
-_SUPPORTED_SERVICES = ["image_recognition_msgs/Annotate"]
+_SUPPORTED_SERVICES = ["object_tracking_msgs/Annotate"]
 
 
 def _sanitize(label):
@@ -48,12 +48,13 @@ class AnnotationPlugin(Plugin):
 
         self._widget = QWidget()
         context.add_widget(self._widget)
+        self._widget.resize(800,1000)
         
         # Layout and attach to widget
         layout = QVBoxLayout()  
         self._widget.setLayout(layout)
 
-        self._image_widget = ImageWidget(self._widget, self.image_callback, clear_on_click=True)
+        self._image_widget = ImageWidget(self._widget, self._roi_callback, clear_on_click=True)
         layout.addWidget(self._image_widget)
 
         # Input field
@@ -62,23 +63,32 @@ class AnnotationPlugin(Plugin):
 
         self._edit_path_button = QPushButton("Edit path")
         self._edit_path_button.clicked.connect(self._get_output_directory)
-        grid_layout.addWidget(self._edit_path_button, 1, 1)
+        grid_layout.addWidget(self._edit_path_button, 2, 1)
 
         self._output_path_edit = QLineEdit()
         self._output_path_edit.setDisabled(True)
-        grid_layout.addWidget(self._output_path_edit, 1, 2)
+        grid_layout.addWidget(self._output_path_edit, 2, 2)
 
-        self._labels_edit = QLineEdit()
-        self._labels_edit.setDisabled(True)
-        grid_layout.addWidget(self._labels_edit, 2, 2)
 
-        self._edit_labels_button = QPushButton("Edit labels")
-        self._edit_labels_button.clicked.connect(self._get_labels)
-        grid_layout.addWidget(self._edit_labels_button, 2, 1)
+        self.labels = []
+        self._option_selector = QComboBox()
+        self._option_selector.currentIndexChanged.connect(self.classChange)
+        grid_layout.addWidget(self._option_selector, 2, 3)
+
+        self.classImgs = []
+        self._imgNum_label = QLabel(str(0))
+        grid_layout.addWidget(self._imgNum_label, 2, 4)
+
+        self._label_edit = QLineEdit()
+        grid_layout.addWidget(self._label_edit, 3, 2)
+
+        self._edit_labels_button = QPushButton("Add Label")
+        self._edit_labels_button.clicked.connect(self._add_label)
+        grid_layout.addWidget(self._edit_labels_button, 3, 1)
 
         self._save_button = QPushButton("Annotate again!")
         self._save_button.clicked.connect(self.annotate_again_clicked)
-        grid_layout.addWidget(self._save_button, 2, 3)
+        grid_layout.addWidget(self._save_button, 3,3)
 
         # Bridge for opencv conversion
         self.bridge = CvBridge()
@@ -91,45 +101,17 @@ class AnnotationPlugin(Plugin):
         self.label = ""
         self.output_directory = ""
 
-    def image_callback(self, msg):
-        """
-        Called when a new sensor_msgs/Image is coming in
-        :param msg: The image messaeg
-        """
 
-	"""try:
-            cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-	    bbox = self._image_widget.get_roi()
-            self.image = self._image_widget.set_image(cv_image)
-        except CvBridgeError as e:
-            rospy.logerr(e)"""
 
-	self._image_widget.get_roi()
-        self.image = self._image_widget.get_image()
+###################
 
-	if not self.labels:
-            warning_dialog("No labels specified!", "Please first specify some labels using the 'Edit labels' button")
-            return
 
-        #height, width = roi_image.shape[:2]
-
-	option = option_dialog("Label", self.labels)
-        if option:
-            self.label = option
-            #self._image_widget.add_detection(0, 0, width, height, option)
-            self.annotate(self._image_widget.get_image(), self._image_widget.get_bbox())
-
-    def _image_callback(self, msg):
-        """
-        Called when a new sensor_msgs/Image is coming in
-        :param msg: The image messaeg
-        """
-        try:
-            cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-        except CvBridgeError as e:
-            rospy.logerr(e)
-
-        self._image_widget.set_image(cv_image)    
+    def classChange(self):
+        self.label = self._option_selector.currentText()
+        self.cls_id = [i[0] for i in self.labels].index(self.label)
+        cls = self.labels[self.cls_id]
+        self.numImg = cls[1]
+        self._imgNum_label.setText(str(self.numImg))
 
     def annotate_again_clicked(self):
         """
@@ -163,18 +145,6 @@ class AnnotationPlugin(Plugin):
             except Exception as e:
                 warning_dialog("Service Exception", str(e))
 
-    def _create_service_client(self, srv_name):
-        """
-        Create a service client proxy
-        :param srv_name: Name of the service
-        """
-        if self._srv:
-            self._srv.close()
-
-        if srv_name in rosservice.get_service_list():
-            rospy.loginfo("Creating proxy for service '%s'" % srv_name)
-            self._srv = rospy.ServiceProxy(srv_name, rosservice.get_service_class_by_name(srv_name))
-            
     def store_image(self, image, bbox):
         """
         Store the image
@@ -199,16 +169,23 @@ class AnnotationPlugin(Plugin):
 
         self.output_directory = path
         self._output_path_edit.setText("Saving images to %s" % path)
+        labels = self._read_labels()
+        self._set_labels(labels)
 
-    def _get_labels(self):
+    def _add_label(self):
         """
-        Gets and sets the labels
+        Gets and adds a label
         """
-        text, ok = QInputDialog.getText(self._widget, 'Text Input Dialog', 'Type labels semicolon separated, e.g. banana;apple:',
-            QLineEdit.Normal, ";".join(self.labels))
-        if ok:
-            labels = set([_sanitize(label) for label in str(text).split(";") if _sanitize(label)]) # Sanitize to alphanumeric, exclude spaces
-            self._set_labels(labels)
+
+        label = self._label_edit.text()
+        labelNames = [i[0] for i in self.labels]
+        if not label in list(labelNames):
+            self.labels.append((label,0))
+            self._option_selector.addItem(label)
+            with open("{}/labels.txt".format(self.output_directory), 'a') as file:
+                file.write("{}\n".format(label))
+        self._label_edit.setText('')
+
 
     def _set_labels(self, labels):
         """
@@ -217,9 +194,60 @@ class AnnotationPlugin(Plugin):
         """
         if not labels:
             labels = []
+        else:
+            for label in labels:
+                self.labels.append(label)
+                self._option_selector.addItem(label[0])
 
-        self.labels = labels
-        self._labels_edit.setText("%s" % labels)
+    def _read_labels(self):
+        labels_tmp = []
+        try:
+            with open('{}/labels.txt'.format(self.output_directory), 'r') as f:
+                labels_tmp = f.readlines()
+            labels_tmp = [(i.rstrip(),0) for i in labels_tmp]
+        except:
+            pass
+
+        labels = []
+        for label in labels_tmp:
+            label = list(label)
+            path = "{}/{}/images".format(self.output_directory, label[0])
+            if os.path.isdir(path):
+                label[1] = len([name for name in os.listdir(path) if os.path.isfile("{}/{}".format(path,name))])
+            labels.append(label)
+        return labels
+
+    def _roi_callback(self, msg):
+        """
+        Called when a new sensor_msgs/Image is coming in
+        :param msg: The image messaeg
+        """
+
+	self._image_widget.get_roi()
+        self.image = self._image_widget.get_image()
+
+	if not self.labels:
+            warning_dialog("No labels specified!", "Please first specify some labels using the 'Edit labels' button")
+            return
+
+        #height, width = roi_image.shape[:2]
+
+	self.annotate(self._image_widget.get_image(), self._image_widget.get_bbox())
+
+
+    def _image_callback(self, msg):
+        """
+        Called when a new sensor_msgs/Image is coming in
+        :param msg: The image messaeg
+        """
+        try:
+            cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        except CvBridgeError as e:
+            rospy.logerr(e)
+
+        self._image_widget.set_image(cv_image)    
+
+
 
     def trigger_configuration(self):
         """
@@ -268,6 +296,18 @@ class AnnotationPlugin(Plugin):
         instance_settings.set_value("labels", self.labels)
         if self._sub:
             instance_settings.set_value("topic_name", self._sub.name)
+    
+    def _create_service_client(self, srv_name):
+        """
+        Create a service client proxy
+        :param srv_name: Name of the service
+        """
+        if self._srv:
+            self._srv.close()
+
+        if srv_name in rosservice.get_service_list():
+            rospy.loginfo("Creating proxy for service '%s'" % srv_name)
+            self._srv = rospy.ServiceProxy(srv_name, rosservice.get_service_class_by_name(srv_name))
 
     def restore_settings(self, plugin_settings, instance_settings):
         """
@@ -287,7 +327,9 @@ class AnnotationPlugin(Plugin):
             labels = instance_settings.value("labels")
         except:
             pass
-        self._set_labels(labels)
-
-        self._create_subscriber(str(instance_settings.value("topic_name", "/usb_cam/image_raw")))
+        #labels = self._read_labels()
+        #self._set_labels(labels)
         self._create_service_client(str(instance_settings.value("service_name", "/image_recognition/my_service")))
+        self._create_subscriber(str(instance_settings.value("topic_name", "/xtion/rgb/image_raw")))
+
+

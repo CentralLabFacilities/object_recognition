@@ -21,7 +21,7 @@ from dialogs import option_dialog, info_dialog, warning_dialog, number_dialog
 
 from image_recognition_util import image_writer
 
-_SUPPORTED_SERVICES = ["image_recognition_msgs/Annotate"]
+_SUPPORTED_SERVICES = ["object_tracking_msgs/Annotate"]
 
 def _sanitize(label):
     """
@@ -155,13 +155,13 @@ class AnnotationPlugin(Plugin):
 
 
 
-    def annotate(self, image, bbox):
-        """
-        Create an annotation
-        :param image: The image we want to annotate
-        """
-        self.annotate_srv(image, bbox)
-        self.store_image(image, bbox)
+#    def annotate(self, image, bbox):
+#        """
+#        Create an annotation
+#        :param image: The image we want to annotate
+#        """
+#        self.annotate_srv(image, bbox)
+#        self.store_image(image, bbox)
 
 
     def store_image(self, image, bbox, cls_id, mask):
