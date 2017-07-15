@@ -117,9 +117,9 @@ class AnnotationPlugin(Plugin):
         """
         Triggered when button clicked
         """
-        image = self._image_widget.get_image()
-        if image is not None:
-            self.annotate(image)
+	image = self._image_widget.get_image()
+	bbox = self._image_widget.get_bbox()
+        self.store_image(image, bbox)
 
     def annotate(self, image, bbox):
         """
@@ -127,7 +127,7 @@ class AnnotationPlugin(Plugin):
         :param image: The image we want to annotate
         """
         #self.annotate_srv(image)
-	print(bbox)
+	#print(bbox)
         self.store_image(image, bbox)
 
     def annotate_srv(self, roi_image):
