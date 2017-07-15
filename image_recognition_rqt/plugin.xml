@@ -14,7 +14,7 @@
       <statustip>Annotate regions in images and write the result to disk.</statustip>
     </qtgui>
   </class>
-  <class name="Annotation Plugin" type="image_recognition_rqt.annotation_testset.AnnotationPlugin" base_class_type="rqt_gui_py::Plugin">
+  <class name="Annotation Testset Plugin" type="image_recognition_rqt.annotation_testset.AnnotationPlugin" base_class_type="rqt_gui_py::Plugin">
     <description>
       A Python GUI plugin for annotating testset image regions
     </description>
