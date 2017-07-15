@@ -153,14 +153,6 @@ class ImageWidget(QWidget):
             cv2.rectangle(mask, (bbox[0], bbox[1]), (bbox[0]+bbox[2], bbox[1]+bbox[3]), 255, thickness=-1)
 	    mask1 = cv2.bitwise_and(mask_poly, mask_poly, mask = mask)
 	    self.mask = mask1
-	    #cv2.imshow('mask_res',mask1)
-            fg = cv2.bitwise_and(image,image, mask = mask1)
-            mask1_inv = cv2.bitwise_not(mask1)
-            bg = cv2.bitwise_and(back,back, mask = mask1_inv)
-            result = bg + fg
-	    #cv2.imshow('img', result)
-	    #image = result
-	    #self._bg_image = image
 	    self.bbox = cv2.boundingRect(contours[largest_contour_index])
 	    self.bbox = (self.bbox[0], self.bbox[0] + self.bbox[2], self.bbox[1], self.bbox[1] + self.bbox[3])
 	    cv2.rectangle(image, (self.bbox[0], self.bbox[2]), (self.bbox[1], self.bbox[3]), (0, 0, 255))
