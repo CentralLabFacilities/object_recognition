@@ -70,8 +70,6 @@ class TensorflowObjectRecognition:
         """
         try:
             self._bgr_image = self._bridge.imgmsg_to_cv2(req.image, "bgr8")
-            cv.imshow("objrec out", self._bgr_image)
-            cv.waitkey(0)
         except CvBridgeError as e:
             error_msg = "Could not convert to opencv image: %s" % e
             rospy.logerr(error_msg)
