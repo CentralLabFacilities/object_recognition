@@ -10,12 +10,12 @@ from python_qt_binding.QtCore import *
 
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
-from object_recognition_msgs.msg import CategoryProbability
+from object_tracking_msgs.msg import CategoryProbability
 
 from image_widget_test_gui import ImageWidget
 from dialogs import option_dialog, warning_dialog, info_dialog
 
-from object_recognition_msgs.srv import Recognize
+from object_tracking_msgs.srv import Recognize
 _SUPPORTED_SERVICES = ["image_recognition_msgs/Recognize"]
 
 
@@ -176,5 +176,5 @@ class TestPlugin(Plugin):
         :param plugin_settings: Plugin settings
         :param instance_settings: Settings of this instance
         """
-        self._create_subscriber(str(instance_settings.value("topic_name", "/usb_cam/image_raw")))
+        self._create_subscriber(str(instance_settings.value("topic_name", "/xtion/rgb/image_raw")))
         self._create_service_client(str(instance_settings.value("service_name", "/image_recognition/my_service")))
