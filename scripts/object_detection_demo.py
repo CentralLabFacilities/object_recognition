@@ -1,22 +1,10 @@
-#!/usr/bin/python3.5
-
 import numpy as np
 import os
 import sys
-import tensorflow as tf
 import cv2
 
-from collections import defaultdict
-from io import StringIO
-from matplotlib import pyplot as plt
 from PIL import Image
 
-
-# This is needed since the notebook is stored in the object_detection folder.
-sys.path.append("/home/sarah/tensorflow/models/research/object_detection")
-#object detection imports
-from utils import label_map_util
-from utils import visualization_utils as vis_util
 
 from tf_detector import TfDetector
 
@@ -78,15 +66,15 @@ def detect_test_images(test_images_dir,detection_threshold):
 if __name__ == "__main__":
 
 	if len(sys.argv) < 5:
-		print("usage: python object_detection_demo.py <path_to_classifier_and_labels> <path_to_test_images> <num_classes> <threshold>")
+		print("usage: python object_detection_demo.py <path_to_grpah> <path_to_labels> <path_to_test_images> <num_classes> <threshold>")
 		exit(0)
 
 	#get variables	
-	detection_threshold = float(sys.argv[4])
-	numClasses = int(sys.argv[3])
-	pathToCkpt = sys.argv[1] + 'frozen_inference_graph.pb'
-	pathToLabels = sys.argv[1] + 'mscoco_label_map.pbtxt'
-	test_images_dir = sys.argv[2]
+	detection_threshold = float(sys.argv[5])
+	numClasses = int(sys.argv[4])
+	pathToCkpt = sys.argv[1]
+	pathToLabels = sys.argv[2]
+	test_images_dir = sys.argv[3]
 
         tf_detector = TfDetector()
         print "load graph"
