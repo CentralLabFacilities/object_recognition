@@ -55,8 +55,6 @@ def detect_test_images(test_images_dir,detection_threshold):
             image_np = load_image_into_numpy_array(image)
 
             (boxes, scores, classes) = tf_detector.detect(image_np, detection_threshold)
-            #boxes = tf_detector.getBoxes()
-            #scores = tf_detector.getScores()
 
             visualize_bounding_boxes(image_np, boxes, scores, classes)
     cv2.destroyAllWindows()
@@ -66,7 +64,7 @@ def detect_test_images(test_images_dir,detection_threshold):
 if __name__ == "__main__":
 
 	if len(sys.argv) < 5:
-		print("usage: python object_detection_demo.py <path_to_grpah> <path_to_labels> <path_to_test_images> <num_classes> <threshold>")
+		print("usage: python object_detection_demo.py <path_to_graph> <path_to_labels> <path_to_test_images> <num_classes> <threshold>")
 		exit(0)
 
 	#get variables	

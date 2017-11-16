@@ -25,5 +25,6 @@ install(PROGRAMS
   scripts/annotation_gui
   scripts/annotation_testset_gui
   scripts/test_gui
+  scripts/detect_gui
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

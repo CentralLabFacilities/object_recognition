@@ -29,7 +29,6 @@
       <statustip>Annotate regions in images and write the result to disk.</statustip>
     </qtgui>
   </class>
-
   <class name="Test Plugin" type="image_recognition_rqt.test.TestPlugin" base_class_type="rqt_gui_py::Plugin">
     <description>
       A Python GUI plugin for testing the image_recognition_msgs interface
@@ -44,6 +43,20 @@
       <icon type="theme">system-help</icon>
       <statustip>Test image recognition using an sensor_msgs/Image input feed.</statustip>
     </qtgui>
-</class>
-
+  </class>
+  <class name="Detect Plugin" type="image_recognition_rqt.detect.DetectPlugin" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      A Python GUI plugin for testing tensorflow detection
+    </description>
+    <qtgui>
+        <group>
+            <label>Object detection</label>
+            <icon type="theme">folder</icon>
+            <statustip>Plugins related to object detection.</statustip>
+        </group>
+      <label>Object detection test</label>
+      <icon type="theme">system-help</icon>
+      <statustip>Test object detection using an sensor_msgs/Image input feed.</statustip>
+    </qtgui>
+  </class>
 </library>

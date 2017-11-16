@@ -6,7 +6,7 @@ from PIL import Image
 
 
 # This is needed since the notebook is stored in the object_detection folder.
-sys.path.append("../externals/models/research/object_detection/")
+sys.path.append("../../../externals/models/research/object_detection/")
 #object detection imports
 from utils import label_map_util
 from utils import visualization_utils as vis_util
