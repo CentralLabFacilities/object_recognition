@@ -63,8 +63,8 @@ class DetectPlugin(Plugin):
 	#TODO: get params from rosargs
 	self.detection_threshold = 0.2
 	self.numClasses = 90
-	self.pathToCkpt = "/media/sarah/media/tf_detect_graph/frozen_inference_graph.pb"
-	self.pathToLabels =  "/media/sarah/media/tf_detect_graph/mscoco_label_map.pbtxt"
+	self.pathToCkpt = "/media/local_data/saschroeder/tensorflow/tf_detect_graph/frozen_inference_graph.pb"
+	self.pathToLabels =  "/media/local_data/saschroeder/tensorflow/tf_detect_graph/mscoco_label_map.pbtxt"
 
         self.tf_detector = TfDetector()
         print "load graph"
@@ -87,7 +87,7 @@ class DetectPlugin(Plugin):
 
     def visualize_bounding_boxes(self,image_np, boxes, scores, classes):
     	#visualization of detection results
-    	image_np = cv2.cvtColor(image_np,cv2.COLOR_BGR2RGB)
+    	#image_np = cv2.cvtColor(image_np,cv2.COLOR_BGR2RGB)
 
     	#display image with bounding boxes using opencv
     	height, width, channels = image_np.shape
