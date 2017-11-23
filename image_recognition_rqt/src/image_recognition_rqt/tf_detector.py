@@ -4,12 +4,8 @@ import tensorflow as tf
 
 from PIL import Image
 
-
-# This is needed since the notebook is stored in the object_detection folder.
-sys.path.append("../../../externals/models/research/object_detection/")
 #object detection imports
-from utils import label_map_util
-from utils import visualization_utils as vis_util
+from object_detection.utils import label_map_util
 
 
 class TfDetector:
