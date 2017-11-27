@@ -42,8 +42,10 @@ class TfDetector:
         self.category_index = label_map_util.create_category_index(self.categories)
 
     def detect(self,image_np, detection_threshold):
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.333)
+
         with self.detection_graph.as_default():
-            with tf.Session(graph=self.detection_graph) as sess:
+            with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options),graph=self.detection_graph) as sess:
                 # Definite input and output Tensors for detection_graph
                 image_tensor = self.detection_graph.get_tensor_by_name('image_tensor:0')
                 # image_tensor = detection_graph.get_tensor_by_name('final_result')

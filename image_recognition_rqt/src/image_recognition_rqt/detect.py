@@ -5,25 +5,26 @@ import cv2
 
 from qt_gui.plugin import Plugin
 
-from python_qt_binding.QtWidgets import * 
-from python_qt_binding.QtGui import * 
-from python_qt_binding.QtCore import * 
+from python_qt_binding.QtWidgets import *
+from python_qt_binding.QtGui import *
+from python_qt_binding.QtCore import *
 
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 from object_tracking_msgs.msg import CategoryProbability
 
-from image_widget_test_gui import ImageWidget
+from image_widget import ImageWidget
 from dialogs import option_dialog, warning_dialog, info_dialog
 
-#TODO
+# TODO
 from object_tracking_msgs.srv import Recognize
+
 _SUPPORTED_SERVICES = ["image_recognition_msgs/Recognize"]
 
 from tf_detector import TfDetector
 
-class DetectPlugin(Plugin):
 
+class DetectPlugin(Plugin):
     def __init__(self, context):
         """
         DetectPlugin class to evaluate the image_recognition_msgs interfaces
@@ -36,9 +37,9 @@ class DetectPlugin(Plugin):
 
         self._widget = QWidget()
         context.add_widget(self._widget)
-        
+
         # Layout and attach to widget
-        layout = QVBoxLayout()  
+        layout = QVBoxLayout()
         self._widget.setLayout(layout)
 
         self._image_widget = ImageWidget(self._widget, self.image_roi_callback, clear_on_click=True)
@@ -60,17 +61,18 @@ class DetectPlugin(Plugin):
         self._sub = None
         self._srv = None
 
-	#TODO: get params from rosargs
-	self.detection_threshold = 0.2
-	self.numClasses = 90
-	self.pathToCkpt = "/media/local_data/saschroeder/tensorflow/tf_detect_graph/frozen_inference_graph.pb"
-	self.pathToLabels =  "/media/local_data/saschroeder/tensorflow/tf_detect_graph/mscoco_label_map.pbtxt"
+        # TODO: get params from rosargs
+        self.detection_threshold = 0.2
+        self.numClasses = 90
+        self.pathToCkpt = "/media/local_data/saschroeder/tensorflow/tf_detect_graph/frozen_inference_graph.pb"
+        self.pathToLabels = "/media/local_data/saschroeder/tensorflow/tf_detect_graph/mscoco_label_map.pbtxt"
 
         self.tf_detector = TfDetector()
         print "load graph"
         self.tf_detector.load_graph(self.pathToCkpt, self.pathToLabels, self.numClasses)
 
-    #TODO
+
+    # TODO
     def recognize_srv_call(self, roi_image):
         """
         Method that calls the Recognize.srv
@@ -84,24 +86,32 @@ class DetectPlugin(Plugin):
         :param roi_image: The opencv image in the ROI
         """
         print "roi callback not supported"
+        cv_image = self._image_widget.get_image()
+        # detection
+        (boxes, scores, classes) = self.tf_detector.detect(cv_image, self.detection_threshold)
+        cv_image = self.visualize_bounding_boxes(cv_image, boxes, scores, classes)
+        # update image widget
+        self._image_widget.set_image(cv_image)
+        print classes
+        print scores
 
-    def visualize_bounding_boxes(self,image_np, boxes, scores, classes):
-    	#visualization of detection results
-    	#image_np = cv2.cvtColor(image_np,cv2.COLOR_BGR2RGB)
+    def visualize_bounding_boxes(self, image_np, boxes, scores, classes):
+        # visualization of detection results
+        # image_np = cv2.cvtColor(image_np,cv2.COLOR_BGR2RGB)
 
-    	#display image with bounding boxes using opencv
-    	height, width, channels = image_np.shape
-    	boxes = boxes[0]
-    	l = len(boxes)
-    	for i in range(0,l):
-    	    bbox = boxes[i]
-    	    prob = scores[0][i]
-    	    if (prob > self.detection_threshold):
-    	        cv2.rectangle(image_np, (int(bbox[1]*width), int(bbox[0]*height)), (int(bbox[3]*width), int(bbox[2]*height)), (0, 100, 200), 3)
-    	        label = '%s %f' % (self.tf_detector.getLabel(classes[0][i]), prob)
-    	        cv2.putText(image_np,label,(int(bbox[1]*width),int(bbox[0]*height)),0,0.7,(0,0,255),2)
-    	return image_np
-
+        # display image with bounding boxes using opencv
+        height, width, channels = image_np.shape
+        boxes = boxes[0]
+        l = len(boxes)
+        for i in range(0, l):
+            bbox = boxes[i]
+            prob = scores[0][i]
+            if (prob > self.detection_threshold):
+                cv2.rectangle(image_np, (int(bbox[1] * width), int(bbox[0] * height)),
+                              (int(bbox[3] * width), int(bbox[2] * height)), (0, 100, 200), 3)
+                label = '%s %f' % (self.tf_detector.getLabel(classes[0][i]), prob)
+                cv2.putText(image_np, label, (int(bbox[1] * width), int(bbox[0] * height)), 0, 0.7, (0, 0, 255), 2)
+        return image_np
 
     def _image_callback(self, msg):
         """
@@ -113,14 +123,8 @@ class DetectPlugin(Plugin):
         except CvBridgeError as e:
             rospy.logerr(e)
 
-	#detection
-	(boxes, scores, classes) = self.tf_detector.detect(cv_image, self.detection_threshold)
-	cv_image = self.visualize_bounding_boxes(cv_image, boxes, scores, classes)
-
-	#update image widget	
+        # update image widget
         self._image_widget.set_image(cv_image)
-
-
 
     def trigger_configuration(self):
         """
