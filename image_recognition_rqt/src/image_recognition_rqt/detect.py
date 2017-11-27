@@ -22,6 +22,7 @@ from object_tracking_msgs.srv import Recognize
 _SUPPORTED_SERVICES = ["image_recognition_msgs/Recognize"]
 
 from tf_detector import TfDetector
+import time
 
 
 class DetectPlugin(Plugin):
@@ -85,7 +86,7 @@ class DetectPlugin(Plugin):
         Callback triggered when the user has drawn an ROI on the image
         :param roi_image: The opencv image in the ROI
         """
-        print "roi callback not supported"
+        print "detect objects"
         cv_image = self._image_widget.get_image()
         # detection
         (boxes, scores, classes) = self.tf_detector.detect(cv_image, self.detection_threshold)
@@ -109,7 +110,7 @@ class DetectPlugin(Plugin):
             if (prob > self.detection_threshold):
                 cv2.rectangle(image_np, (int(bbox[1] * width), int(bbox[0] * height)),
                               (int(bbox[3] * width), int(bbox[2] * height)), (0, 100, 200), 3)
-                label = '%s %f' % (self.tf_detector.getLabel(classes[0][i]), prob)
+                label = '%s %f' % (self.tf_detector.get_label(classes[0][i]), prob)
                 cv2.putText(image_np, label, (int(bbox[1] * width), int(bbox[0] * height)), 0, 0.7, (0, 0, 255), 2)
         return image_np
 
