@@ -93,8 +93,14 @@ class DetectPlugin(Plugin):
         cv_image = self.visualize_bounding_boxes(cv_image, boxes, scores, classes)
         # update image widget
         self._image_widget.set_image(cv_image)
-        print classes
-        print scores
+        l = len(boxes[0])
+        for i in range(0, l):
+            prob = scores[0][i]
+            if (prob > self.detection_threshold):
+                label = '%s %f' % (self.tf_detector.get_label(classes[0][i]), prob)
+                print label, "(", prob, ")"
+            else:
+                break
 
     def visualize_bounding_boxes(self, image_np, boxes, scores, classes):
         # visualization of detection results
