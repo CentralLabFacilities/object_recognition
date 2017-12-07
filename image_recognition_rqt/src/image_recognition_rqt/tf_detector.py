@@ -1,8 +1,5 @@
 import numpy as np
-import sys
 import tensorflow as tf
-
-from PIL import Image
 
 # object detection imports
 from object_detection.utils import label_map_util

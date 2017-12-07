@@ -24,7 +24,7 @@ while(True):
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-    img_msg = CvBridge().cv2_to_imgmsg(frame, "rgb8")
+    img_msg = CvBridge().cv2_to_imgmsg(frame, "bgr8")
     VideoRaw.publish(img_msg)
  #   time.sleep(0.1)
 

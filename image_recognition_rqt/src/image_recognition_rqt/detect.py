@@ -19,10 +19,9 @@ from dialogs import option_dialog, warning_dialog, info_dialog
 # TODO
 from object_tracking_msgs.srv import Recognize
 
-_SUPPORTED_SERVICES = ["image_recognition_msgs/Recognize"]
+_SUPPORTED_SERVICES = ["object_recognition_msgs/Recognize"]
 
 from tf_detector import TfDetector
-import time
 
 
 class DetectPlugin(Plugin):
@@ -65,13 +64,13 @@ class DetectPlugin(Plugin):
         # TODO: get params from rosargs
         self.detection_threshold = 0.2
         self.numClasses = 90
-        self.pathToCkpt = "/media/local_data/saschroeder/tensorflow/tf_detect_graph/frozen_inference_graph.pb"
-        self.pathToLabels = "/media/local_data/saschroeder/tensorflow/tf_detect_graph/mscoco_label_map.pbtxt"
+        #self.pathToCkpt = "/media/local_data/saschroeder/tensorflow/tf_detect_graph/frozen_inference_graph.pb"
+        self.pathToCkpt = "/media/local_data/saschroeder/objects/tenClass_with_masks/frozen_inference_graph.pb"
+        #self.pathToLabels = "/media/local_data/saschroeder/tensorflow/tf_detect_graph/mscoco_label_map.pbtxt"
+        self.pathToLabels = "/media/local_data/saschroeder/objects/tenClass_with_masks/data/labels.pbtxt"
 
         self.tf_detector = TfDetector()
-        print "load graph"
-        self.tf_detector.load_graph(self.pathToCkpt, self.pathToLabels, self.numClasses)
-
+        self.cv_image = None
 
     # TODO
     def recognize_srv_call(self, roi_image):
@@ -79,33 +78,50 @@ class DetectPlugin(Plugin):
         Method that calls the Recognize.srv
         :param roi_image: Selected roi_image by the user
         """
-        print "service calls cannot be handled yet"
+        try:
+            result = self._srv(image=self.bridge.cv2_to_imgmsg(roi_image, "bgr8"))
+        except Exception as e:
+            warning_dialog("Service Exception", str(e))
+            return
 
+        self.visualize_bounding_boxes(result.recognitions)
+
+    # TODO: replace with button callback
     def image_roi_callback(self, roi_image):
         """
         Callback triggered when the user has drawn an ROI on the image
         :param roi_image: The opencv image in the ROI
         """
-        print "detect objects"
-        cv_image = self._image_widget.get_image()
-        # detection
-        (boxes, scores, classes) = self.tf_detector.detect(cv_image, self.detection_threshold)
-        cv_image = self.visualize_bounding_boxes(cv_image, boxes, scores, classes)
-        # update image widget
-        self._image_widget.set_image(cv_image)
-        l = len(boxes[0])
-        for i in range(0, l):
-            prob = scores[0][i]
-            if (prob > self.detection_threshold):
-                label = '%s %f' % (self.tf_detector.get_label(classes[0][i]), prob)
-                print label, "(", prob, ")"
-            else:
-                break
+        if self._srv is None:
+            warning_dialog("No service specified!",
+                           "Please first specify a service via the options button (top-right gear wheel)")
+            return
 
-    def visualize_bounding_boxes(self, image_np, boxes, scores, classes):
+        if self._srv.service_class == Recognize:
+            self.recognize_srv_call(self.cv_image)
+        else:
+            warning_dialog("Unknown service class", "Service class is unkown!")
+
+    def visualize_bounding_boxes(self, result):
         # visualization of detection results
         # image_np = cv2.cvtColor(image_np,cv2.COLOR_BGR2RGB)
+        # display image with bounding boxes using opencv
+        height, width, channels = self.cv_image.shape
+        for i in range(0, len(result)):
+            prob = result[i].category_probability.probability
+            label = result[i].category_probability.label
+            bbox = result[i].bbox
+            if (prob > self.detection_threshold):
+                cv2.rectangle(self.cv_image, (int(bbox.x_min * width), int(bbox.y_min * height)),
+                              (int(bbox.x_max * width), int(bbox.y_max * height)), (0, 100, 200), 3)
+                image_label = '%s %f' % (label, prob)
+                cv2.putText(self.cv_image, image_label, (int(bbox.x_min * width), int(bbox.y_min * height)), 0, 0.7, (0, 0, 255), 2)
+        cv2.imshow('image', self.cv_image)
+        cv2.waitKey(0)
 
+    """def visualize_bounding_boxes(self, image_np, boxes, scores, classes):
+        # visualization of detection results
+        # image_np = cv2.cvtColor(image_np,cv2.COLOR_BGR2RGB)
         # display image with bounding boxes using opencv
         height, width, channels = image_np.shape
         boxes = boxes[0]
@@ -118,7 +134,7 @@ class DetectPlugin(Plugin):
                               (int(bbox[3] * width), int(bbox[2] * height)), (0, 100, 200), 3)
                 label = '%s %f' % (self.tf_detector.get_label(classes[0][i]), prob)
                 cv2.putText(image_np, label, (int(bbox[1] * width), int(bbox[0] * height)), 0, 0.7, (0, 0, 255), 2)
-        return image_np
+        return image_np"""
 
     def _image_callback(self, msg):
         """
@@ -126,12 +142,12 @@ class DetectPlugin(Plugin):
         :param msg: The image message
         """
         try:
-            cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+            self.cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         except CvBridgeError as e:
             rospy.logerr(e)
 
         # update image widget
-        self._image_widget.set_image(cv_image)
+        self._image_widget.set_image(self.cv_image)
 
     def trigger_configuration(self):
         """
@@ -172,10 +188,12 @@ class DetectPlugin(Plugin):
         """
         if self._srv:
             self._srv.close()
-
         if srv_name in rosservice.get_service_list():
             rospy.loginfo("Creating proxy for service '%s'" % srv_name)
             self._srv = rospy.ServiceProxy(srv_name, rosservice.get_service_class_by_name(srv_name))
+        else:
+            rospy.loginfo("Service client with name '%s' cannot be created" % srv_name)
+            rospy.loginfo("try: /recognize")
 
     def shutdown_plugin(self):
         """

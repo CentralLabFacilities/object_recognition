@@ -14,6 +14,7 @@ catkin_package()
 install(PROGRAMS
   scripts/retrain
   scripts/object_recognition_node
+  scripts/tf_detection_node
   scripts/segment_classify_bridge.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
