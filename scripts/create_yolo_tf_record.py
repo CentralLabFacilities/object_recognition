@@ -52,10 +52,11 @@ def create_tf_example(labelpath,imagepath,label_map,num_classes):
 
     classes.append(id)
     classes_text.append(class_text.encode('utf8'))
+    # in yolo format we have x_min, y_min, width, height
     xmins.append(float(content[1]))
-    xmaxs.append(float(content[2]))
+    xmaxs.append(float(content[1])+float(content[2]))
     ymins.append(float(content[3]))
-    ymaxs.append(float(content[4]))
+    ymaxs.append(float(content[3])+float(content[4]))
 
     tf_example = tf.train.Example(features=tf.train.Features(feature={
         'image/height': dataset_util.int64_feature(height),
@@ -78,6 +79,7 @@ def main(_):
     path = os.path.join(FLAGS.input_path)
     num_classes = 0
     # create label_map
+    print("expecting {}/classNames.txt".format(path))
     label_map_output = "{}/labelMap.pbtxt".format(FLAGS.output_path)
     class_name_path = "{}/classNames.txt".format(path)
     with open(class_name_path) as f:

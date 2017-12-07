@@ -61,14 +61,6 @@ class DetectPlugin(Plugin):
         self._sub = None
         self._srv = None
 
-        # TODO: get params from rosargs
-        self.detection_threshold = 0.2
-        self.numClasses = 90
-        #self.pathToCkpt = "/media/local_data/saschroeder/tensorflow/tf_detect_graph/frozen_inference_graph.pb"
-        self.pathToCkpt = "/media/local_data/saschroeder/objects/tenClass_with_masks/frozen_inference_graph.pb"
-        #self.pathToLabels = "/media/local_data/saschroeder/tensorflow/tf_detect_graph/mscoco_label_map.pbtxt"
-        self.pathToLabels = "/media/local_data/saschroeder/objects/tenClass_with_masks/data/labels.pbtxt"
-
         self.tf_detector = TfDetector()
         self.cv_image = None
 
@@ -111,30 +103,12 @@ class DetectPlugin(Plugin):
             prob = result[i].category_probability.probability
             label = result[i].category_probability.label
             bbox = result[i].bbox
-            if (prob > self.detection_threshold):
-                cv2.rectangle(self.cv_image, (int(bbox.x_min * width), int(bbox.y_min * height)),
-                              (int(bbox.x_max * width), int(bbox.y_max * height)), (0, 100, 200), 3)
-                image_label = '%s %f' % (label, prob)
-                cv2.putText(self.cv_image, image_label, (int(bbox.x_min * width), int(bbox.y_min * height)), 0, 0.7, (0, 0, 255), 2)
+            cv2.rectangle(self.cv_image, (int(bbox.x_min * width), int(bbox.y_min * height)),
+                          (int(bbox.x_max * width), int(bbox.y_max * height)), (0, 100, 200), 2)
+            image_label = '%s %f' % (label, prob)
+            cv2.putText(self.cv_image, image_label, (int(bbox.x_min * width), int(bbox.y_min * height)), 0, 0.4, (0, 0, 255), 1)
         cv2.imshow('image', self.cv_image)
         cv2.waitKey(0)
-
-    """def visualize_bounding_boxes(self, image_np, boxes, scores, classes):
-        # visualization of detection results
-        # image_np = cv2.cvtColor(image_np,cv2.COLOR_BGR2RGB)
-        # display image with bounding boxes using opencv
-        height, width, channels = image_np.shape
-        boxes = boxes[0]
-        l = len(boxes)
-        for i in range(0, l):
-            bbox = boxes[i]
-            prob = scores[0][i]
-            if (prob > self.detection_threshold):
-                cv2.rectangle(image_np, (int(bbox[1] * width), int(bbox[0] * height)),
-                              (int(bbox[3] * width), int(bbox[2] * height)), (0, 100, 200), 3)
-                label = '%s %f' % (self.tf_detector.get_label(classes[0][i]), prob)
-                cv2.putText(image_np, label, (int(bbox[1] * width), int(bbox[0] * height)), 0, 0.7, (0, 0, 255), 2)
-        return image_np"""
 
     def _image_callback(self, msg):
         """
