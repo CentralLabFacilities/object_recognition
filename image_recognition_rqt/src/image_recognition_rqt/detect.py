@@ -65,18 +65,18 @@ class DetectPlugin(Plugin):
         self.cv_image = None
 
     # TODO
-    def recognize_srv_call(self, roi_image):
+    def recognize_srv_call(self, image):
         """
         Method that calls the Recognize.srv
         :param roi_image: Selected roi_image by the user
         """
         try:
-            result = self._srv(image=self.bridge.cv2_to_imgmsg(roi_image, "bgr8"))
+            result = self._srv(image=self.bridge.cv2_to_imgmsg(image, "bgr8"))
         except Exception as e:
             warning_dialog("Service Exception", str(e))
             return
-
-        self.visualize_bounding_boxes(result.recognitions)
+        print result
+        self.visualize_bounding_boxes(result.recognitions, image)
 
     # TODO: replace with button callback
     def image_roi_callback(self, roi_image):
@@ -94,20 +94,20 @@ class DetectPlugin(Plugin):
         else:
             warning_dialog("Unknown service class", "Service class is unkown!")
 
-    def visualize_bounding_boxes(self, result):
+    def visualize_bounding_boxes(self, result, image):
         # visualization of detection results
         # image_np = cv2.cvtColor(image_np,cv2.COLOR_BGR2RGB)
         # display image with bounding boxes using opencv
-        height, width, channels = self.cv_image.shape
+        height, width, channels = image.shape
         for i in range(0, len(result)):
             prob = result[i].category_probability.probability
             label = result[i].category_probability.label
             bbox = result[i].bbox
-            cv2.rectangle(self.cv_image, (int(bbox.x_min * width), int(bbox.y_min * height)),
+            cv2.rectangle(image, (int(bbox.x_min * width), int(bbox.y_min * height)),
                           (int(bbox.x_max * width), int(bbox.y_max * height)), (0, 100, 200), 2)
             image_label = '%s %f' % (label, prob)
-            cv2.putText(self.cv_image, image_label, (int(bbox.x_min * width), int(bbox.y_min * height)), 0, 0.4, (0, 0, 255), 1)
-        cv2.imshow('image', self.cv_image)
+            cv2.putText(image, image_label, (int(bbox.x_min * width), int(bbox.y_min * height)), 0, 0.4, (0, 0, 255), 1)
+        cv2.imshow('image', image)
         cv2.waitKey(0)
 
     def _image_callback(self, msg):
