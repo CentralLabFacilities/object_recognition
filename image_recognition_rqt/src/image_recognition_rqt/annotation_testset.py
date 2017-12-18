@@ -105,7 +105,6 @@ class AnnotationPlugin(Plugin):
 
 ###################
 
-
     def classChange(self):
         self.label = self._option_selector.currentText()
         self.cls_id = [i[0] for i in self.labels].index(self.label)
@@ -151,7 +150,7 @@ class AnnotationPlugin(Plugin):
         :param image: Image we would like to store
         """
         if image is not None and self.label is not None and self.output_directory is not None:
-            image_writer.write_annotated(self.output_directory, image, None, self.label, None, bbox, True)
+            image_writer.write_annotated(self.output_directory, image, None, self.label, self.cls_id, bbox, True)
 
     def _get_output_directory(self):
         """
