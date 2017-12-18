@@ -95,27 +95,36 @@ def main(_):
     print('Successfully created the label map: {}'.format(label_map_output))
 
     # create tf record
-    tf_record_output = "{}/tf_train.record".format(FLAGS.output_path)
-    writer = tf.python_io.TFRecordWriter(tf_record_output)
+    train_record_output = "{}/train.record".format(FLAGS.output_path)
+    test_record_output = "{}/test.record".format(FLAGS.output_path)
+    writer_train = tf.python_io.TFRecordWriter(train_record_output)
+    writer_test = tf.python_io.TFRecordWriter(test_record_output)
     label_map = label_map_util.load_labelmap(label_map_output)
 
     util = ObjectsetUtils()
-
+    train_test_counter = 0
     for dirname, dirnames, filenames in os.walk(path):
         for filename in filenames:
             labelpath = dirname + '/' + filename
             if 'labels' in labelpath and '.txt' in labelpath:
                 imagepath = "{}/images/{}.jpg".format(dirname[:-7],filename[:-4])
                 if (os.path.isfile(imagepath)):
-                    #print(imagepath)
+                    print(imagepath)
                     tf_example = create_tf_example(labelpath,imagepath, label_map, num_classes,util)
                     if (tf_example == None):
-                        continue;
+                        continue
                     else:
-                        writer.write(tf_example.SerializeToString())
+                        if (train_test_counter < 7):
+                            writer_train.write(tf_example.SerializeToString())
+                        else:
+                            writer_test.write(tf_example.SerializeToString())
+                        train_test_counter = train_test_counter + 1
+                        if (train_test_counter == 10):
+                            train_test_counter = 0
 
-    writer.close()
-    output_path = os.path.join(os.getcwd(), tf_record_output)
+    writer_train.close()
+    writer_test.close()
+    output_path = os.path.join(os.getcwd(), train_record_output)
     print('Successfully created the TFRecords: {}'.format(output_path))
 
 
