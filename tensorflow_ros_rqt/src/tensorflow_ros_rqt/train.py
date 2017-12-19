@@ -117,13 +117,13 @@ class TrainPlugin(Plugin):
         output_dir = self.output_directory
         print("output_dir = "+output_dir)
         model_dir = output_dir+"/inception"
-        bottleneck_dir = output_dir+"/bottleneck"
+
         utils.maybe_download_and_extract("http://download.tensorflow.org/models/image/imagenet/inception-2015-12-05.tgz",
                                          model_dir)
 
         try:
             retrain.main(self.images_directory, model_dir, self.output_directory,
-                         steps=self.steps, batch=self.batch, bottleneck_dir=bottleneck_dir)
+                         steps=self.steps, batch=self.batch)
             dialog("Retrain succes", "Succesfully retrained the top layers! Check Tensorboard for the results!")
             self._train_button.setDisabled(True)
             self._train_button.setText("Training done :)")

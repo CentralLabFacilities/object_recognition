@@ -94,9 +94,6 @@ tf.app.flags.DEFINE_string('output_graph', '/tmp/output_graph.pb',
                            """Where to save the trained graph.""")
 tf.app.flags.DEFINE_string('output_labels', '/tmp/output_labels.txt',
                            """Where to save the trained graph's labels.""")
-tf.app.flags.DEFINE_string('summaries_dir', '/tmp/retrain_logs',
-                          """Where to save summary logs for TensorBoard.""")
-
 # Details of the training configuration.
 tf.app.flags.DEFINE_integer('how_many_training_steps', 4000,
                             """How many training steps to run before ending.""")
@@ -807,11 +804,13 @@ def add_evaluation_step(result_tensor, ground_truth_tensor):
   return evaluation_step
 
 
-def main(_,bottleneck_dir):
+def main(_, output_dir):
+  bottleneck_dir = output_dir+"/bottleneck"
+  summaries_dir = output_dir+"/logs"
   # Setup the directory we'll write summaries to for TensorBoard
-  if tf.gfile.Exists(FLAGS.summaries_dir):
-    tf.gfile.DeleteRecursively(FLAGS.summaries_dir)
-  tf.gfile.MakeDirs(FLAGS.summaries_dir)
+  if tf.gfile.Exists(summaries_dir):
+    tf.gfile.DeleteRecursively(summaries_dir)
+  tf.gfile.MakeDirs(summaries_dir)
 
   # Set up the pre-trained graph.
   maybe_download_and_extract()
@@ -858,9 +857,9 @@ def main(_,bottleneck_dir):
 
   # Merge all the summaries and write them out to /tmp/retrain_logs (by default)
   merged = tf.summary.merge_all()
-  train_writer = tf.summary.FileWriter(FLAGS.summaries_dir + '/train',
+  train_writer = tf.summary.FileWriter(summaries_dir + '/train',
                                         sess.graph)
-  validation_writer = tf.summary.FileWriter(FLAGS.summaries_dir + '/validation')
+  validation_writer = tf.summary.FileWriter(summaries_dir + '/validation')
 
   # Set up all our weights to their initial default values.
   init = tf.global_variables_initializer()
