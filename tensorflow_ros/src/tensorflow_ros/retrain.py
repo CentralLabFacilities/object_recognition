@@ -24,7 +24,7 @@ def mkdir_p(path):
             raise
 
 
-def main(image_dir, model_dir, output_dir, steps, batch):
+def main(image_dir, model_dir, output_dir, steps, batch,bottleneck_dir):
     tf.app.flags.FLAGS.image_dir = image_dir
     tf.app.flags.FLAGS.model_dir = model_dir
 
@@ -38,4 +38,4 @@ def main(image_dir, model_dir, output_dir, steps, batch):
     tf.app.flags.FLAGS.train_batch_size = batch
     tf.app.flags.FLAGS.validation_batch_size = batch
 
-    tf_main('')
+    tf_main('',bottleneck_dir)

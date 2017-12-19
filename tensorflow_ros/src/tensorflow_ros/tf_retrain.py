@@ -127,9 +127,6 @@ tf.app.flags.DEFINE_string('model_dir', '/tmp/imagenet',
                            """Path to classify_image_graph_def.pb, """
                            """imagenet_synset_to_human_label_map.txt, and """
                            """imagenet_2012_challenge_label_map_proto.pbtxt.""")
-tf.app.flags.DEFINE_string(
-    'bottleneck_dir', '/tmp/bottleneck',
-    """Path to cache bottleneck layer values as files.""")
 tf.app.flags.DEFINE_string('final_tensor_name', 'final_result',
                            """The name of the output classification layer in"""
                            """ the retrained graph.""")
@@ -810,7 +807,7 @@ def add_evaluation_step(result_tensor, ground_truth_tensor):
   return evaluation_step
 
 
-def main(_):
+def main(_,bottleneck_dir):
   # Setup the directory we'll write summaries to for TensorBoard
   if tf.gfile.Exists(FLAGS.summaries_dir):
     tf.gfile.DeleteRecursively(FLAGS.summaries_dir)
@@ -847,7 +844,7 @@ def main(_):
   else:
     # We'll make sure we've calculated the 'bottleneck' image summaries and
     # cached them on disk.
-    cache_bottlenecks(sess, image_lists, FLAGS.image_dir, FLAGS.bottleneck_dir,
+    cache_bottlenecks(sess, image_lists, FLAGS.image_dir, bottleneck_dir,
                       jpeg_data_tensor, bottleneck_tensor)
 
   # Add the new layer that we'll be training.
@@ -881,7 +878,7 @@ def main(_):
     else:
       train_bottlenecks, train_ground_truth = get_random_cached_bottlenecks(
           sess, image_lists, FLAGS.train_batch_size, 'training',
-          FLAGS.bottleneck_dir, FLAGS.image_dir, jpeg_data_tensor,
+          bottleneck_dir, FLAGS.image_dir, jpeg_data_tensor,
           bottleneck_tensor)
     # Feed the bottlenecks and ground truth into the graph, and run a training
     # step. Capture training summaries for TensorBoard with the `merged` op.
@@ -904,7 +901,7 @@ def main(_):
       validation_bottlenecks, validation_ground_truth = (
           get_random_cached_bottlenecks(
               sess, image_lists, FLAGS.validation_batch_size, 'validation',
-              FLAGS.bottleneck_dir, FLAGS.image_dir, jpeg_data_tensor,
+              bottleneck_dir, FLAGS.image_dir, jpeg_data_tensor,
               bottleneck_tensor))
       # Run a validation step and capture training summaries for TensorBoard
       # with the `merged` op.
@@ -920,7 +917,7 @@ def main(_):
   # some new images we haven't used before.
   test_bottlenecks, test_ground_truth = get_random_cached_bottlenecks(
       sess, image_lists, FLAGS.test_batch_size, 'testing',
-      FLAGS.bottleneck_dir, FLAGS.image_dir, jpeg_data_tensor,
+      bottleneck_dir, FLAGS.image_dir, jpeg_data_tensor,
       bottleneck_tensor)
   test_accuracy = sess.run(
       evaluation_step,
