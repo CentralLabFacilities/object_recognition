@@ -16,10 +16,9 @@ from object_tracking_msgs.msg import CategoryProbability
 from image_widget import ImageWidget
 from dialogs import option_dialog, warning_dialog, info_dialog
 
-# TODO
-from object_tracking_msgs.srv import Recognize
+from object_tracking_msgs.srv import DetectObjects
 
-_SUPPORTED_SERVICES = ["object_recognition_msgs/Recognize"]
+_SUPPORTED_SERVICES = ["object_tracking_msgs/DetectObjects"]
 
 from tf_detector import TfDetector
 
@@ -27,7 +26,7 @@ from tf_detector import TfDetector
 class DetectPlugin(Plugin):
     def __init__(self, context):
         """
-        DetectPlugin class to evaluate the image_recognition_msgs interfaces
+        DetectPlugin class to evaluate the object_tracking_msgs interfaces
         :param context: QT context, aka parent
         """
         super(DetectPlugin, self).__init__(context)
@@ -65,9 +64,9 @@ class DetectPlugin(Plugin):
         self.cv_image = None
 
     # TODO
-    def recognize_srv_call(self, image):
+    def detect_srv_call(self, image):
         """
-        Method that calls the Recognize.srv
+        Method that calls the DetectObjects.srv
         :param roi_image: Selected roi_image by the user
         """
         try:
@@ -76,7 +75,7 @@ class DetectPlugin(Plugin):
             warning_dialog("Service Exception", str(e))
             return
         print result
-        self.visualize_bounding_boxes(result.recognitions, image)
+        self.visualize_bounding_boxes(result.detections, image)
 
     # TODO: replace with button callback
     def image_roi_callback(self, roi_image):
@@ -89,8 +88,8 @@ class DetectPlugin(Plugin):
                            "Please first specify a service via the options button (top-right gear wheel)")
             return
 
-        if self._srv.service_class == Recognize:
-            self.recognize_srv_call(self.cv_image)
+        if self._srv.service_class == DetectObjects:
+            self.detect_srv_call(self.cv_image)
         else:
             warning_dialog("Unknown service class", "Service class is unkown!")
 
@@ -102,9 +101,9 @@ class DetectPlugin(Plugin):
         for i in range(0, len(result)):
             prob = result[i].category_probability.probability
             label = result[i].category_probability.label
-            bbox = result[i].bbox
-            cv2.rectangle(image, (int(bbox.x_min * width), int(bbox.y_min * height)),
-                          (int(bbox.x_max * width), int(bbox.y_max * height)), (0, 100, 200), 2)
+            roi = result[i].roi
+            cv2.rectangle(image, (int(roi.x_min * width), int(roi.y_min * height)),
+                          (int((roi.width + roi.x_min) * width), int((roi.height + roi.y_min) * height)), (0, 100, 200), 2)
             image_label = '%s %f' % (label, prob)
             cv2.putText(image, image_label, (int(bbox.x_min * width), int(bbox.y_min * height)), 0, 0.4, (0, 0, 255), 1)
         cv2.imshow('image', image)
@@ -157,7 +156,7 @@ class DetectPlugin(Plugin):
 
     def _create_service_client(self, srv_name):
         """
-        Method that creates a client service proxy to call either the GetFaceProperties.srv or the Recognize.srv
+        Method that creates a client service proxy to call either the GetFaceProperties.srv or the DetectObjects.srv
         :param srv_name:
         """
         if self._srv:
@@ -167,7 +166,7 @@ class DetectPlugin(Plugin):
             self._srv = rospy.ServiceProxy(srv_name, rosservice.get_service_class_by_name(srv_name))
         else:
             rospy.loginfo("Service client with name '%s' cannot be created" % srv_name)
-            rospy.loginfo("try: /recognize")
+            rospy.loginfo("try: /detect")
 
     def shutdown_plugin(self):
         """
@@ -191,4 +190,4 @@ class DetectPlugin(Plugin):
         :param instance_settings: Settings of this instance
         """
         self._create_subscriber(str(instance_settings.value("topic_name", "/xtion/rgb/image_raw")))
-        self._create_service_client(str(instance_settings.value("service_name", "/image_recognition/my_service")))
+        self._create_service_client(str(instance_settings.value("service_name", "/detect")))
