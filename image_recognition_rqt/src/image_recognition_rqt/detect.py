@@ -101,9 +101,9 @@ class DetectPlugin(Plugin):
         for i in range(0, len(result)):
             prob = result[i].category_probability.probability
             label = result[i].category_probability.label
-            roi = result[i].roi
-            cv2.rectangle(image, (int(roi.x_min * width), int(roi.y_min * height)),
-                          (int((roi.width + roi.x_min) * width), int((roi.height + roi.y_min) * height)), (0, 100, 200), 2)
+            bbox = result[i].bbox
+            cv2.rectangle(image, (int(bbox.x_min * width), int(bbox.y_min * height)),
+                          (int(bbox.x_max * width), int(bbox.y_max * height)), (0, 100, 200), 2)
             image_label = '%s %f' % (label, prob)
             cv2.putText(image, image_label, (int(bbox.x_min * width), int(bbox.y_min * height)), 0, 0.4, (0, 0, 255), 1)
         cv2.imshow('image', image)

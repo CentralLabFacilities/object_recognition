@@ -173,11 +173,10 @@ class TensorflowObjectDetection:
             category_probability = CategoryProbability(label=self.category_index[classes[i]]['name'], probability=scores[i])
             roi = boxes[i]
             detection.category_probability = category_probability
-            detection.roi.y_min = roi[0]
-            detection.roi.x_min = roi[1]
-            detection.roi.height = (roi[2] - roi[0])
-            detection.roi.width = (roi[3] - roi[1])
-            detection.roi.do_rectify = True
+            detection.bbox.y_min = roi[0]
+            detection.bbox.x_min = roi[1]
+            detection.bbox.y_max = roi[2]
+            detection.bbox.x_max = roi[3]
             self._detections.append(detection)
 
         self._do_detection = False
