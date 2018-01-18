@@ -89,7 +89,7 @@ class TensorflowObjectDetection:
 
     def detect(self, image_np):
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.333)
-
+        print("use only 33% of gpu memory")
         with self.detection_graph.as_default():
             with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options), graph=self.detection_graph) as sess:
                 # Definite input and output Tensors for detection_graph
@@ -142,13 +142,7 @@ class TensorflowObjectDetection:
             rospy.logerr(error_msg)
             raise Exception(error_msg)
 
-        # Write raw image
-        if self._save_images_folder:
-            image_writer_test_gui.write_raw(self._save_images_folder, self._bgr_image)
-
         # Write the image to file
-        # ToDo: directly in memory, saves file operations
-        cv2.imwrite(filename=self._filename, img=self._bgr_image)
         size = self._bgr_image.shape[:2]  # For now, we assume the entire image is the ROI
         self._size['height'] = size[0]
         self._size['width'] = size[1]

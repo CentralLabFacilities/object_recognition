@@ -38,4 +38,4 @@ def main(image_dir, model_dir, output_dir, steps, batch):
     tf.app.flags.FLAGS.train_batch_size = batch
     tf.app.flags.FLAGS.validation_batch_size = batch
 
-    tf_main('')
+    tf_main('',output_dir)

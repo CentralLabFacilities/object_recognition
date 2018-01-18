@@ -94,9 +94,6 @@ tf.app.flags.DEFINE_string('output_graph', '/tmp/output_graph.pb',
                            """Where to save the trained graph.""")
 tf.app.flags.DEFINE_string('output_labels', '/tmp/output_labels.txt',
                            """Where to save the trained graph's labels.""")
-tf.app.flags.DEFINE_string('summaries_dir', '/tmp/retrain_logs',
-                          """Where to save summary logs for TensorBoard.""")
-
 # Details of the training configuration.
 tf.app.flags.DEFINE_integer('how_many_training_steps', 4000,
                             """How many training steps to run before ending.""")
@@ -127,9 +124,6 @@ tf.app.flags.DEFINE_string('model_dir', '/tmp/imagenet',
                            """Path to classify_image_graph_def.pb, """
                            """imagenet_synset_to_human_label_map.txt, and """
                            """imagenet_2012_challenge_label_map_proto.pbtxt.""")
-tf.app.flags.DEFINE_string(
-    'bottleneck_dir', '/tmp/bottleneck',
-    """Path to cache bottleneck layer values as files.""")
 tf.app.flags.DEFINE_string('final_tensor_name', 'final_result',
                            """The name of the output classification layer in"""
                            """ the retrained graph.""")
@@ -810,11 +804,13 @@ def add_evaluation_step(result_tensor, ground_truth_tensor):
   return evaluation_step
 
 
-def main(_):
+def main(_, output_dir):
+  bottleneck_dir = output_dir+"/bottleneck"
+  summaries_dir = output_dir+"/logs"
   # Setup the directory we'll write summaries to for TensorBoard
-  if tf.gfile.Exists(FLAGS.summaries_dir):
-    tf.gfile.DeleteRecursively(FLAGS.summaries_dir)
-  tf.gfile.MakeDirs(FLAGS.summaries_dir)
+  if tf.gfile.Exists(summaries_dir):
+    tf.gfile.DeleteRecursively(summaries_dir)
+  tf.gfile.MakeDirs(summaries_dir)
 
   # Set up the pre-trained graph.
   maybe_download_and_extract()
@@ -847,7 +843,7 @@ def main(_):
   else:
     # We'll make sure we've calculated the 'bottleneck' image summaries and
     # cached them on disk.
-    cache_bottlenecks(sess, image_lists, FLAGS.image_dir, FLAGS.bottleneck_dir,
+    cache_bottlenecks(sess, image_lists, FLAGS.image_dir, bottleneck_dir,
                       jpeg_data_tensor, bottleneck_tensor)
 
   # Add the new layer that we'll be training.
@@ -861,9 +857,9 @@ def main(_):
 
   # Merge all the summaries and write them out to /tmp/retrain_logs (by default)
   merged = tf.summary.merge_all()
-  train_writer = tf.summary.FileWriter(FLAGS.summaries_dir + '/train',
+  train_writer = tf.summary.FileWriter(summaries_dir + '/train',
                                         sess.graph)
-  validation_writer = tf.summary.FileWriter(FLAGS.summaries_dir + '/validation')
+  validation_writer = tf.summary.FileWriter(summaries_dir + '/validation')
 
   # Set up all our weights to their initial default values.
   init = tf.global_variables_initializer()
@@ -881,7 +877,7 @@ def main(_):
     else:
       train_bottlenecks, train_ground_truth = get_random_cached_bottlenecks(
           sess, image_lists, FLAGS.train_batch_size, 'training',
-          FLAGS.bottleneck_dir, FLAGS.image_dir, jpeg_data_tensor,
+          bottleneck_dir, FLAGS.image_dir, jpeg_data_tensor,
           bottleneck_tensor)
     # Feed the bottlenecks and ground truth into the graph, and run a training
     # step. Capture training summaries for TensorBoard with the `merged` op.
@@ -904,7 +900,7 @@ def main(_):
       validation_bottlenecks, validation_ground_truth = (
           get_random_cached_bottlenecks(
               sess, image_lists, FLAGS.validation_batch_size, 'validation',
-              FLAGS.bottleneck_dir, FLAGS.image_dir, jpeg_data_tensor,
+              bottleneck_dir, FLAGS.image_dir, jpeg_data_tensor,
               bottleneck_tensor))
       # Run a validation step and capture training summaries for TensorBoard
       # with the `merged` op.
@@ -920,7 +916,7 @@ def main(_):
   # some new images we haven't used before.
   test_bottlenecks, test_ground_truth = get_random_cached_bottlenecks(
       sess, image_lists, FLAGS.test_batch_size, 'testing',
-      FLAGS.bottleneck_dir, FLAGS.image_dir, jpeg_data_tensor,
+      bottleneck_dir, FLAGS.image_dir, jpeg_data_tensor,
       bottleneck_tensor)
   test_accuracy = sess.run(
       evaluation_step,

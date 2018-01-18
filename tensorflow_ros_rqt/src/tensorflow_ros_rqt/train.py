@@ -69,7 +69,7 @@ class TrainPlugin(Plugin):
         layout.addWidget(self._train_button, 3, 2)
 
         # Start tensorboard op startup
-        self.tensorboard_sub = subprocess.Popen(["tensorboard", "--logdir", "/tmp/retrain_logs"])
+        #self.tensorboard_sub = subprocess.Popen(["tensorboard", "--logdir", "/tmp/retrain_logs"])
 
         self._label = QLabel("Tensorboard live at <a href=\"http://127.0.1.1:6006/\">http://127.0.1.1:6006</a>")
         self._label.setOpenExternalLinks(True);
@@ -113,9 +113,13 @@ class TrainPlugin(Plugin):
         """
         The train method that does the actual training of the neural net
         """
-        model_dir = "/tmp/inception"
+        self._get_output_directory
+        output_dir = self.output_directory
+        print("output_dir = "+output_dir)
+        model_dir = output_dir+"/inception"
+
         utils.maybe_download_and_extract("http://download.tensorflow.org/models/image/imagenet/inception-2015-12-05.tgz",
-                                         "/tmp/inception")
+                                         model_dir)
 
         try:
             retrain.main(self.images_directory, model_dir, self.output_directory,

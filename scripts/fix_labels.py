@@ -50,11 +50,11 @@ if __name__ == "__main__":
         className = str(classNames[i])
         label_txt_path = path+className+"/labels"
         print("class: ",className," with id: ",i)
-
         for dirname, dirnames, filenames in os.walk(label_txt_path):
             for filename in filenames:
                 f = dirname + '/' + filename
                 if 'labels' in f and '.txt' in f:
+                    print f
                     fix_label(f,i)
 
     print '\033[1m\033[92mDone!\033[0m'

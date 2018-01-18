@@ -169,7 +169,7 @@ if __name__ == '__main__':
     try:
         _graph_path = os.path.expanduser(rospy.get_param("~graph_path"))
         _labels_path = os.path.expanduser(rospy.get_param("~labels_path"))
-        save_images = rospy.get_param("~save_images", True)
+        save_images = rospy.get_param("~save_images", False)
 
         save_images_folder = None
         if save_images:
