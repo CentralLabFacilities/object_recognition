@@ -1,7 +1,9 @@
-import sys
-import os
 import cv2
-from objectset_utils import ObjectsetUtils
+import os
+import sys
+
+from image_recognition_util.src.image_recognition_util.objectset_utils import ObjectsetUtils
+
 
 def show_bbox(imagepath, labelpath, util):
     image = cv2.imread(imagepath,3)

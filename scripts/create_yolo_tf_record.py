@@ -14,7 +14,7 @@ import tensorflow as tf
 from object_detection.utils import dataset_util
 from object_detection.utils import label_map_util
 
-from objectset_utils import ObjectsetUtils
+from image_recognition_util.objectset_utils import ObjectsetUtils
 
 
 flags = tf.app.flags
