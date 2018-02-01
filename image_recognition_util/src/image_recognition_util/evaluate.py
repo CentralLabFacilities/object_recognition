@@ -42,6 +42,8 @@ def evaluateDetection(annotatedList, detectedList, threshold, image):
         #TODO if label = unknown -> color green -> num_correct++
         #blue
         color = (255,0,0)
+        if (detected.label=="unknown"):
+            color = (0,255,0)
         drawBbox(color, image, detected)
         num_unknown_detected = num_unknown_detected + 1
     return num_correct, num_wrong, num_unknown_detected, image

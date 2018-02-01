@@ -11,9 +11,12 @@ import sys
 import os
 from object_detection.utils import dataset_util
 from object_detection.utils import label_map_util
+from object_tracking_msgs.msg import CategoryProbability
 
-threshold = 0.3
-srv = rospy.ServiceProxy("/detect", rosservice.get_service_class_by_name("/detect"))
+
+threshold = 0.4
+srv_detect = rospy.ServiceProxy("/detect", rosservice.get_service_class_by_name("/detect"))
+srv_recognize = rospy.ServiceProxy("/recognize", rosservice.get_service_class_by_name("/recognize"))
 util = ObjectsetUtils()
 bridge = CvBridge()
 total_correct = 0
@@ -41,7 +44,7 @@ def readAnnotated(labelpath, label_map, num_classes):
 
 def detect(cvImage):
     try:
-        result = srv(image=bridge.cv2_to_imgmsg(cvImage, "bgr8"))
+        result = srv_detect(image=bridge.cv2_to_imgmsg(cvImage, "bgr8"))
     except Exception as e:
         print("Service Exception", str(e))
         return
@@ -57,12 +60,50 @@ def convertMsgToObject(results):
         detections.append(d)
     return detections
 
+def detectAndRecognize(cvImage):
+    height, width, channels = cvImage.shape
+    try:
+        #detection
+        result = srv_detect(image=bridge.cv2_to_imgmsg(cvImage, "bgr8"))
+        #recognition for each object/roi
+        detections = result.detections
+        for d in detections:
+            xmin = int(d.bbox.x_min*width)
+            xmax = int(d.bbox.x_max*width)
+            ymin = int(d.bbox.y_min*height)
+            ymax = int(d.bbox.y_max*height)
+            roi = cvImage[ymin:ymax, xmin:xmax]
+            try:
+                res = srv_recognize(image=bridge.cv2_to_imgmsg(roi, "bgr8"))
+                # assume res always has len=1, is this correct?
+                r = res.recognitions[0]
+                best = CategoryProbability(label="unknown", probability=r.categorical_distribution.unknown_probability)
+                # get label with highest probability
+                for p in r.categorical_distribution.probabilities:
+                    if p.probability > best.probability:
+                        best = p
+                # change label and probability
+                #print("detected {}, {}".format(d.category_probability.label, d.category_probability.probability))
+                #print("recognized {}, {}".format(best.label, best.probability))
+                d.category_probability.label = best.label
+                d.category_probability.probability = best.probability
+                if (best.label=="unkown"):
+                    print("unknown object found")
+            except Exception as e:
+                print("Service Expcetion during recognition", str(e))
+                return
+    except Exception as e:
+        print("Service Exception during detection", str(e))
+        return
+    #print("convert detections to objectList")
+    detections = convertMsgToObject(result.detections)
+    return detections
 
 def evaluateImage(labelpath, imagepath, label_map, num_classes):
     cvImage = cv2.imread(imagepath, 3)
     annotatedList = readAnnotated(labelpath, label_map, num_classes)
     to_find = len(annotatedList)
-    detectedList = detect(cvImage)
+    detectedList = detectAndRecognize(cvImage)
     correct, wrong, unkown_detected, image = evaluate.evaluateDetection(annotatedList, detectedList, threshold, cvImage)
     return correct, wrong, unkown_detected, to_find, image
 
@@ -86,6 +127,7 @@ if __name__ == "__main__":
     else:
         savepath = "/tmp"
     print("save eval images in {}".format(savepath))
+    print("treshold: {}".format(threshold))
     for dirname, dirnames, filenames in os.walk(path):
         for filename in filenames:
             labelpath = dirname + '/' + filename
