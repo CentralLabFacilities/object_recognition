@@ -16,7 +16,6 @@ def evaluateDetection(annotatedList, detectedList, threshold, image):
     for annotated in annotatedList:
         cv2.rectangle(image, (int(annotated.bbox.xmin * width), int(annotated.bbox.ymin * height)),
                       (int(annotated.bbox.xmax * width), int(annotated.bbox.ymax * height)), color, 2)
-        #cv2.putText(image, annotated.label, (int(annotated.bbox.xmin* width), int(annotated.bbox.ymin * height)), 0, 0.4, (0, 0, 255), 1)
 
     for detected in detectedList:
         if (detected.prob > threshold):
@@ -27,19 +26,20 @@ def evaluateDetection(annotatedList, detectedList, threshold, image):
                         #green
                         color = (0,255,0)
                         drawBbox(color, image, detected)
-                        print("*** correct detection ***")
+                        #print("*** correct detection ***")
                     else:
                         num_wrong = num_wrong + 1
                         #red
                         color = (0, 0, 255)
                         drawBbox(color, image, detected)
-                        print(" wrong label ")
+                        #print(" wrong label ")
+                        #TODO unknown vs. known but false classified
                     #remove annotated from list to prevent double detections
                     detectedList.remove(detected)
                     break
     # draw boxes that didn't match any annotated object
     for detected in detectedList:
-        #if label = unknown -> color green -> num_correct++
+        #TODO if label = unknown -> color green -> num_correct++
         #blue
         color = (255,0,0)
         drawBbox(color, image, detected)
@@ -57,13 +57,14 @@ def drawBbox(color, image, detected):
 def matchBoundingBoxes(detected, annotated):
     aWidth = annotated.bbox.xmax - annotated.bbox.xmin
     aHeight = annotated.bbox.ymax - annotated.bbox.ymin
-    maxDistX = aWidth*0.3
-    maxDistY = aHeight*0.3
+    maxDistX = aWidth*0.5
+    maxDistY = aHeight*0.5
+    # alternatively match centroids of bboxes
+    # or evaluate overlapping area of bboxes
 
     if (inRange(detected.bbox.xmin,annotated.bbox.xmin,maxDistX) and inRange(detected.bbox.ymin,annotated.bbox.ymin,maxDistY)
         and inRange(detected.bbox.xmax,annotated.bbox.xmax,maxDistX)
         and inRange(detected.bbox.ymax,annotated.bbox.ymax,maxDistY)):
-        #bboxes match
         return True
     else:
         return False

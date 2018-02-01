@@ -45,7 +45,7 @@ def detect(cvImage):
     except Exception as e:
         print("Service Exception", str(e))
         return
-    print("convert detections to objectList")
+    #print("convert detections to objectList")
     detections = convertMsgToObject(result.detections)
     return detections
 
@@ -71,8 +71,8 @@ def evaluateImage(labelpath, imagepath, label_map, num_classes):
 if __name__ == "__main__":
 
     # check for correct argument size
-    if not len(sys.argv) == 4:
-        print '\033[91m' + 'Argument Error!\nUsage: python fix_txt.py path_to_dataset path_to_labelmap num_classes' + '\033[0m'
+    if not len(sys.argv) >= 4:
+        print '\033[91m' + 'Argument Error!\nUsage: python fix_txt.py path_to_dataset path_to_labelmap num_classes [save_image_path]' + '\033[0m'
         exit(1)
     # check if argument given is a directory
     if not os.path.isdir(sys.argv[1]):
@@ -81,15 +81,19 @@ if __name__ == "__main__":
     path = sys.argv[1]
     label_map = label_map_util.load_labelmap(sys.argv[2])
     num_classes = int(sys.argv[3])
-
+    if (len(sys.argv) == 5):
+        savepath = sys.argv[4]
+    else:
+        savepath = "/tmp"
+    print("save eval images in {}".format(savepath))
     for dirname, dirnames, filenames in os.walk(path):
         for filename in filenames:
             labelpath = dirname + '/' + filename
             if 'labels' in labelpath and '.txt' in labelpath:
                 imagepath = "{}/images/{}.jpg".format(dirname[:-7],filename[:-4])
-                savepath = "{}".format(dirname[:-7])
+
                 if (os.path.isfile(imagepath)):
-                    print("evaluate ", imagepath)
+                    #print("evaluate ", imagepath)
                     correct, wrong, unkown_detected, to_find, image = evaluateImage(labelpath,imagepath, label_map, num_classes)
                     total_correct = total_correct + correct
                     total_wrong = total_wrong + wrong
@@ -97,7 +101,7 @@ if __name__ == "__main__":
                     total_images = total_images + 1
                     total_to_find = total_to_find + to_find
                     save_filename = '{}/eval_image{}.jpg'.format(savepath, index)
-                    print("save image to: ", save_filename)
+                    #print("save image to: ", save_filename)
                     cv2.imwrite(save_filename, image)
                     index = index + 1
 
