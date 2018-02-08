@@ -15,9 +15,27 @@ def convert(size, box):
     h = h*dh
     return (x,y,w,h)
 
+# write rois for tensorset
+def write_roi(dir_path, image, label, bbox):
+    if dir_path is None:
+        return False
+    filename = "{}-{}".format(label, datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S_%f"))
+
+    tensor_path = dir_path + "/tensorset"
+    if not os.path.exists(tensor_path):
+        os.makedirs(tensor_path)
+
+    image_dir_tensor = tensor_path + "/" + label
+    if not os.path.exists(image_dir_tensor):
+        os.makedirs(image_dir_tensor)
+
+    # save bounding box for tensorflow train set
+    tensorbox = image[bbox[2]:bbox[3], bbox[0]:bbox[1]]
+    cv2.imwrite("{}/{}.jpg".format(image_dir_tensor, filename), tensorbox)
 
 
-def write_annotated(dir_path, image, mask, label, cls_id, bbox, test=False):
+# write image and annotation file for darkset
+def write_annotated(dir_path, image, mask, labels, cls_ids, bboxes, test=False):
     """
     Write an image with an annotation to a folder
     :param dir_path: The base directory we are going to write to
@@ -25,24 +43,19 @@ def write_annotated(dir_path, image, mask, label, cls_id, bbox, test=False):
     :param label: The label that is used for creating the sub directory if not exists
     :param verified: Whether we are sure the label is correct
     """
+    if (len(labels) >= 1):
+        label = "mixed"
+    else:
+        label = labels[0]
 
-    if dir_path is None:
-        return False
-
-    tensor_path = dir_path + "/tensorset"
     darknet_path = dir_path + "/darkset"
 
     # Check if path exists, otherwise created it
-    if not os.path.exists(tensor_path):
-        os.makedirs(tensor_path)
     if not os.path.exists(darknet_path):
         os.makedirs(darknet_path)
 
     # Main directory for files of class <label>
     class_dir = darknet_path + "/" + label
-    image_dir_tensor = tensor_path + "/" + label
-    if not os.path.exists(image_dir_tensor):
-        os.makedirs(image_dir_tensor)
 
     # Directory for label files
     label_dir = class_dir + "/labels"
@@ -59,21 +72,27 @@ def write_annotated(dir_path, image, mask, label, cls_id, bbox, test=False):
     cv2.imwrite("{}/{}.jpg".format(image_dir, filename), image)
     if not test:
     	cv2.imwrite("{}/{}_mask.jpg".format(image_dir, filename), mask)
-    #filename = "/home/sarah/object_recogntion/%s.jpg" % (datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S_%f"))
-    #cv2.imwrite(filename, image)
 
-    #save bounding box for tensorflow train set
-    tensorbox = image[bbox[2]:bbox[3], bbox[0]:bbox[1]]
-    cv2.imwrite("{}/{}.jpg".format(image_dir_tensor,filename), tensorbox)
+    # save annotation file
+    label_str = ""
+    print("save "+str(len(labels))+" annotations")
+    if (len(labels) == len(cls_ids) and len(labels) == len(bboxes)):
+        l = len(labels)
+        for i in range(0,l):
+            bbox = bboxes[i]
+            label = labels[i]
+            cls_id = cls_ids[i]
 
-    # convert bbox for darknet
-    h, w = image.shape[:2] # changed w, h to h, w -- thilo
-    bb = convert((w,h), bbox)
+            # convert bbox for darknet
+            h, w = image.shape[:2] # changed w, h to h, w -- thilo
+            bb = convert((w,h), bbox)
 
-    # write converted bbox as label in label_dir
-    if cls_id is not None:
-    	label_file = open("{}/{}.txt".format(label_dir, filename), 'w')
-    	label_file.write(str(cls_id) + " " + " ".join([str(a) for a in bb]) + '\n')
+            # write converted bbox as label in label_dir
+            if cls_id is not None:
+                label_str = label_str+(str(cls_id) + " " + " ".join([str(a) for a in bb]) + '\n')
+
+    label_file = open("{}/{}.txt".format(label_dir, filename), 'w')
+    label_file.write(label_str)
 
     # safe image path to list for training/test set
     if not test:

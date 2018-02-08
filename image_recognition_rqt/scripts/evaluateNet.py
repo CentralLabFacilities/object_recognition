@@ -14,7 +14,7 @@ from object_detection.utils import label_map_util
 from object_tracking_msgs.msg import CategoryProbability
 
 
-threshold = 0.4
+threshold = 0.2
 srv_detect = rospy.ServiceProxy("/detect", rosservice.get_service_class_by_name("/detect"))
 srv_recognize = rospy.ServiceProxy("/recognize", rosservice.get_service_class_by_name("/recognize"))
 util = ObjectsetUtils()
@@ -29,17 +29,25 @@ index = 0
 def readAnnotated(labelpath, label_map, num_classes):
     annotatedList = []
     # "label" is the id
-    label = util.getLabelIdFromYolo(labelpath)
-    x_min, y_min, x_max, y_max = util.getNormalizedRoiFromYolo(labelpath)
+    labelList = util.getLabelList(labelpath)
+    bboxList = util.getRoiList(labelpath)
+
     # get label
     categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=num_classes,
                                                                 use_display_name=True)
-    category_index = label_map_util.create_category_index(categories)
-    id = int(label) + 1
-    class_text = category_index[id]['name']
+    for i in range(0,len(labelList)):
+        label = labelList[i]
+        xmin = bboxList[i].xmin
+        xmax = bboxList[i].xmax
+        ymin = bboxList[i].ymin
+        ymax = bboxList[i].ymax
+        category_index = label_map_util.create_category_index(categories)
+        id = int(label) + 1
+        class_text = category_index[id]['name']
 
-    a = Object(class_text,1.0,x_min,x_max,y_min,y_max)
-    annotatedList.append(a)
+        a = Object(class_text,1.0,xmin,xmax,ymin,ymax)
+        annotatedList.append(a)
+
     return annotatedList
 
 def detect(cvImage):

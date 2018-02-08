@@ -142,7 +142,7 @@ class TensorflowObjectRecognition:
         recognition = Recognition()
         recognition.roi.height = self._size['height']
         recognition.roi.width = self._size['width']
-        recognition.categorical_distribution.unknown_probability = 0.1  # TODO: How do we know this?
+        recognition.categorical_distribution.unknown_probability = 0.35  # TODO: How do we know this?
         for res in reversed(sorted_result):
             category_probabilty = CategoryProbability(label=res[0], probability=res[1])
             recognition.categorical_distribution.probabilities.append(category_probabilty)

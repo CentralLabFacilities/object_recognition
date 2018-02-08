@@ -1,5 +1,7 @@
 import os
 import sys
+from image_recognition_util.object import Object
+from image_recognition_util.object import BoundingBox
 
 class ObjectsetUtils():
 
@@ -7,7 +9,6 @@ class ObjectsetUtils():
         print "init"
 
     def getNormalizedRoiFromYolo(self,labelpath):
-
         with open(labelpath) as f:
             content = f.readlines()
             content = [x.strip() for x in content]
@@ -18,13 +19,33 @@ class ObjectsetUtils():
             bbox_width = float(content[3])
             bbox_height = float(content[4])
 
-            x_min = x_center - bbox_width / 2
-            y_min = y_center - bbox_height / 2
-            x_max = x_center + bbox_width / 2
-            y_max = y_center + bbox_height / 2
+            xmin = x_center - bbox_width / 2
+            ymin = y_center - bbox_height / 2
+            xmax = x_center + bbox_width / 2
+            ymax = y_center + bbox_height / 2
+        return xmin, ymin, xmax, ymax
 
-            return x_min, y_min, x_max, y_max
+    def getRoiList(self,labelpath):
+        bboxList = []
+        with open(labelpath) as f:
+            content = f.readlines()
+            content = [x.strip() for x in content]
+            for i in range(0,len(content)):
+                line = content[i].split(' ')
+                x_center = float(line[1])
+                y_center = float(line[2])
+                bbox_width = float(line[3])
+                bbox_height = float(line[4])
 
+                xmin = x_center - bbox_width / 2
+                ymin = y_center - bbox_height / 2
+                xmax = x_center + bbox_width / 2
+                ymax = y_center + bbox_height / 2
+
+                bbox = BoundingBox(xmin, xmax, ymin, ymax)
+                bboxList.append(bbox)
+
+            return bboxList
 
     def getLabelIdFromYolo(self,labelpath):
         with open(labelpath) as f:
@@ -32,4 +53,14 @@ class ObjectsetUtils():
             content = [x.strip() for x in content]
             content = content[0].split(' ')
 
-            return content[0]
+        return content[0]
+
+    def getLabelList(self,labelpath):
+        labelList = []
+        with open(labelpath) as f:
+            content = f.readlines()
+            content = [x.strip() for x in content]
+            for i in range(0, len(content)):
+                line = content[i].split(' ')
+                labelList.append(line[0])
+        return labelList

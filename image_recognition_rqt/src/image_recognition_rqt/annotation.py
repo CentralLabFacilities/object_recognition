@@ -65,6 +65,10 @@ class AnnotationPlugin(Plugin):
         self._edit_path_button.clicked.connect(self._get_output_directory)
         grid_layout.addWidget(self._edit_path_button, 2, 1)
 
+        self._edit_path_button = QPushButton("Save annotations")
+        self._edit_path_button.clicked.connect(self._save_annotations)
+        grid_layout.addWidget(self._edit_path_button, 3,4)
+
         self._output_path_edit = QLineEdit()
         self._output_path_edit.setDisabled(True)
         grid_layout.addWidget(self._output_path_edit, 2, 2)
@@ -100,6 +104,11 @@ class AnnotationPlugin(Plugin):
         self.labels = []
         self.label = ""
         self.output_directory = ""
+
+        self.labelList = []
+        self.idList = []
+        self.bboxes = []
+        self.curImage = None
 
 
 
@@ -150,7 +159,19 @@ class AnnotationPlugin(Plugin):
         :param image: Image we would like to store
         """
         if image is not None and self.label is not None and self.output_directory is not None:
-            image_writer.write_annotated(self.output_directory, image, None, self.label, self.cls_id, bbox, True)
+            image_writer.write_roi(self.output_directory, image, self.label, bbox)
+            self.bboxes.append(bbox)
+            self.idList.append(self.cls_id)
+            self.labelList.append(self.label)
+            self.curImage = image
+
+    def _save_annotations(self):
+        if self.curImage is not None and self.label is not None and self.output_directory is not None:
+            image_writer.write_annotated(self.output_directory, self.curImage, None, self.labelList, self.idList, self.bboxes, True)
+            self.curImage = None
+            self.labelList = []
+            self.idList = []
+            self.bboxes = []
 
     def _get_output_directory(self):
         """
