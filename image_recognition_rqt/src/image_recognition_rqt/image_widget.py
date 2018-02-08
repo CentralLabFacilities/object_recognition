@@ -175,11 +175,23 @@ class ImageWidget(QWidget):
 
         return self._cv_image[y:y + height, x:x + width]
 
-    def set_image(self, image):
+    def set_image(self, img, bboxes, labels):
         """
         Sets an opencv image to the widget
         :param image: The opencv image
         """
+        image = img
+        # draw boxes for current annotations
+        for i in range (0,len(bboxes)):
+            bbox = bboxes[i]
+            label = labels[i]
+            color = (0, 0, 255)
+            cv2.rectangle(image, (bbox[0], bbox[2]),
+                          (bbox[1], bbox[3]), color, 2)
+            image_label = '%s' % (label)
+            cv2.putText(image, image_label, (bbox[0], bbox[2]), 0, 0.6,
+                        color,
+                        1)
         self._cv_image = copy.copy(image)
         self._qt_image = _convert_cv_to_qt_image(image)
         self.update()

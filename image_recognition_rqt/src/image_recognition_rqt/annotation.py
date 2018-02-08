@@ -164,6 +164,7 @@ class AnnotationPlugin(Plugin):
             self.idList.append(self.cls_id)
             self.labelList.append(self.label)
             self.curImage = image
+            self._image_widget.set_image(image, self.bboxes, self.labelList)
 
     def _save_annotations(self):
         if self.curImage is not None and self.label is not None and self.output_directory is not None:
@@ -265,7 +266,7 @@ class AnnotationPlugin(Plugin):
         except CvBridgeError as e:
             rospy.logerr(e)
 
-        self._image_widget.set_image(cv_image)    
+        self._image_widget.set_image(cv_image, self.bboxes, self.labelList)
 
 
 
