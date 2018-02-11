@@ -11,7 +11,7 @@ rospy.init_node('VideoPublisher', anonymous=True)
 VideoRaw = rospy.Publisher('/xtion/rgb/image_raw', Image, queue_size=1)
 
 def publish(img):
-	img_msg = CvBridge().cv2_to_imgmsg(img, "rgb8")
+	img_msg = CvBridge().cv2_to_imgmsg(img, "bgr8")
 	VideoRaw.publish(img_msg)
 	time.sleep(0.5)
 

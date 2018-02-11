@@ -109,6 +109,7 @@ class AnnotationPlugin(Plugin):
         self.idList = []
         self.bboxes = []
         self.curImage = None
+        self.save_img = None
 
 
 
@@ -125,8 +126,8 @@ class AnnotationPlugin(Plugin):
         """
         Triggered when button clicked
         """
-	image = self._image_widget.get_image()
-	bbox = self._image_widget.get_bbox()
+        image = self._image_widget.get_image()
+        bbox = self._image_widget.get_bbox()
         self.store_image(image, bbox)
 
     def annotate(self, image, bbox):
@@ -164,11 +165,11 @@ class AnnotationPlugin(Plugin):
             self.idList.append(self.cls_id)
             self.labelList.append(self.label)
             self.curImage = image
-            self._image_widget.set_image(image, self.bboxes, self.labelList)
+            self.save_img = self._image_widget.set_image(image, self.bboxes, self.labelList)
 
     def _save_annotations(self):
         if self.curImage is not None and self.label is not None and self.output_directory is not None:
-            image_writer.write_annotated(self.output_directory, self.curImage, None, self.labelList, self.idList, self.bboxes, True)
+            image_writer.write_annotated(self.output_directory, self.save_img, None, self.labelList, self.idList, self.bboxes, True)
             self.curImage = None
             self.labelList = []
             self.idList = []

@@ -45,7 +45,7 @@ class ImageWidget(QWidget):
         """
         super(ImageWidget, self).__init__(parent)
         self._cv_image = None
-	self._bg_image = None
+        self._bg_image = None
         self._qt_image = QImage()
         self.pMOG2 = cv2.createBackgroundSubtractorMOG2(500, 16, True)
 
@@ -53,12 +53,12 @@ class ImageWidget(QWidget):
 
         self.dragging = False
         self.drag_offset = QPoint()
-	self.image_callback = image_callback
+        self.image_callback = image_callback
 
         self.detections = []
-	self._clear_on_click = clear_on_click
+        self._clear_on_click = clear_on_click
         self.bbox = None
-	self.mask = None
+        self.mask = None
 
 
     def paintEvent(self, event):
@@ -181,6 +181,7 @@ class ImageWidget(QWidget):
         :param image: The opencv image
         """
         image = img
+        self._cv_image = copy.copy(image)
         # draw boxes for current annotations
         for i in range (0,len(bboxes)):
             bbox = bboxes[i]
@@ -192,10 +193,9 @@ class ImageWidget(QWidget):
             cv2.putText(image, image_label, (bbox[0], bbox[2]), 0, 0.6,
                         color,
                         1)
-        self._cv_image = copy.copy(image)
         self._qt_image = _convert_cv_to_qt_image(image)
         self.update()
-	return image
+	return self._cv_image
 
     def get_mask(self):
 	return self.mask
