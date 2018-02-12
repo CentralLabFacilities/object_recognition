@@ -65,9 +65,9 @@ class AnnotationPlugin(Plugin):
         self._edit_path_button.clicked.connect(self._get_output_directory)
         grid_layout.addWidget(self._edit_path_button, 2, 1)
 
-        self._edit_path_button = QPushButton("Save annotations")
-        self._edit_path_button.clicked.connect(self._save_annotations)
-        grid_layout.addWidget(self._edit_path_button, 3,4)
+        self._save_button = QPushButton("Save annotations")
+        self._save_button.clicked.connect(self._save_annotations)
+        grid_layout.addWidget(self._save_button, 3,4)
 
         self._output_path_edit = QLineEdit()
         self._output_path_edit.setDisabled(True)
@@ -80,8 +80,12 @@ class AnnotationPlugin(Plugin):
         grid_layout.addWidget(self._option_selector, 2, 3)
 
         self.classImgs = []
-        self._imgNum_label = QLabel(str(0))
-        grid_layout.addWidget(self._imgNum_label, 2, 4)
+        #self._imgNum_label = QLabel(str(0))
+        #grid_layout.addWidget(self._imgNum_label, 2, 4)
+
+        self._clear_button = QPushButton("Clear")
+        self._clear_button.clicked.connect(self._clear_annotations)
+        grid_layout.addWidget(self._clear_button, 2, 4)
 
         self._label_edit = QLineEdit()
         grid_layout.addWidget(self._label_edit, 3, 2)
@@ -120,7 +124,7 @@ class AnnotationPlugin(Plugin):
         self.cls_id = [i[0] for i in self.labels].index(self.label)
         cls = self.labels[self.cls_id]
         self.numImg = cls[1]
-        self._imgNum_label.setText(str(self.numImg))
+        #self._imgNum_label.setText(str(self.numImg))
 
     def annotate_again_clicked(self):
         """
@@ -166,6 +170,12 @@ class AnnotationPlugin(Plugin):
             self.labelList.append(self.label)
             self.curImage = image
             self.save_img = self._image_widget.set_image(image, self.bboxes, self.labelList)
+
+    def _clear_annotations(self):
+        self.curImage = None
+        self.labelList = []
+        self.idList = []
+        self.bboxes = []
 
     def _save_annotations(self):
         if self.curImage is not None and self.label is not None and self.output_directory is not None:

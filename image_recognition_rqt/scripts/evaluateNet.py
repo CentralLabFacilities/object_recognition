@@ -47,7 +47,6 @@ def readAnnotated(labelpath, label_map, num_classes):
 
         a = Object(class_text,1.0,xmin,xmax,ymin,ymax)
         annotatedList.append(a)
-
     return annotatedList
 
 def detect(cvImage):

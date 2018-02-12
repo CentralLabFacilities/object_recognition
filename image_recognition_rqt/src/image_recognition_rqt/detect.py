@@ -120,7 +120,7 @@ class DetectPlugin(Plugin):
             rospy.logerr(e)
 
         # update image widget
-        self._image_widget.set_image(self.cv_image)
+        self._image_widget.set_image(self.cv_image, None, None)
 
     def trigger_configuration(self):
         """
