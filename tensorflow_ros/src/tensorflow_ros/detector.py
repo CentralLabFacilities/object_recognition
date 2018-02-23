@@ -33,6 +33,7 @@ class Detector:
         self.category_index = label_map_util.create_category_index(self.categories)
 
     def detect(self, image_np):
+        print "detect"
         if self.detection_graph == None:
             print "No graph defined. You need to load a graph before detecting objects!"
             return None

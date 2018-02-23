@@ -23,6 +23,7 @@ class Recognizer:
 
 
     def recognize(self,filename):
+        print "recognize"
         with tf.Session() as sess:
             """1. Get result tensor"""
             result_tensor = sess.graph.get_tensor_by_name("final_result:0")
