@@ -10,7 +10,7 @@ from cv_bridge import CvBridge, CvBridgeError
 rospy.init_node('VideoPublisher', anonymous=True)
 
 VideoRaw = rospy.Publisher('/xtion/rgb/image_raw', Image, queue_size=1)
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 
 while(True):
     # Capture frame-by-frame

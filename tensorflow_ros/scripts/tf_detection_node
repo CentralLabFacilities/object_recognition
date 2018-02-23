@@ -12,120 +12,59 @@ import rospy
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
 
-# Tensorflow
-import tensorflow as tf
 import numpy as np
 
-# TU/e Robotics
+# object recognition
 import object_tracking_msgs
 from object_tracking_msgs.srv import DetectObjects
 from object_tracking_msgs.msg import Detection, CategoryProbability
 from image_recognition_util import image_writer_test_gui
+from tensorflow_ros import detector
 
-# object detection imports
-from object_detection.utils import label_map_util
-
-
-class TensorflowObjectDetection:
+class TensorflowDetectionNode:
     """ Performs object detection using Tensorflow neural networks """
-    def __init__(self, graph_path, labels_path, save_images_folder,num_classes,detection_threshold):
+    def __init__(self, graph_path, labels_path, save_images_folder,num_classes=99,detection_threshold=0.5):
         """ Constructor
         :param graph_path: string with path + filename (incl. extension) indicating the database location
         :param labels_path: string with path + filename (incl. extension) indicating the location of the text file
         with labels etc.
         :param save_images_folder: Where to store images for debugging or data collection
         """
+
         # Check if the parameters are correct
         if not (os.path.isfile(graph_path) and os.path.isfile(labels_path)):
             err_msg = "DB file {} or models file {} does not exist".format(graph_path, labels_path)
             rospy.logerr(err_msg)
             sys.exit(err_msg)
-        self.num_classes = int(num_classes)
-        if not (self.num_classes > 0):
+        if not (int(num_classes) > 0):
             err_msg = "invalid number of classes".format(num_classes)
             rospy.logerr(err_msg)
             sys.exit(err_msg)
+        #init detector
+        self.detector = detector.Detector(num_classes, detection_threshold)
 
+        self._detections = []  # List with Detections s
         self._bridge = CvBridge()
         self._detect_srv = rospy.Service('detect', DetectObjects, self._detect_srv_callback)
         self._do_detection = False  # Indicates whether a new request has been received and thus detection must
         # be performed
+
         self._filename = "/tmp/tf_obj_detect.jpg"  # Temporary file name
-        self._models_path = labels_path
-        self._detections = []  # List with Detections s
         self._size = {'width': 0, 'height': 0}
         self._save_images_folder = save_images_folder
         self._bgr_image = None
-        self.detection_threshold = detection_threshold
 
-        rospy.loginfo("TensorflowObjectDetection initialized:")
+        rospy.loginfo("TensorflowDetectionNode initialized:")
         rospy.loginfo(" - graph_path=%s", graph_path)
         rospy.loginfo(" - labels_path=%s", labels_path)
         rospy.loginfo(" - save_images_folder=%s", save_images_folder)
+        rospy.loginfo(" - num_classes=%s", num_classes)
+        rospy.loginfo(" - detection_threshold=%s", detection_threshold)
 
         """1. Load graph from saved GraphDef file """
-        start = rospy.Time.now()
-        self.load_graph(graph_path,labels_path)
-        rospy.logdebug("Step {} took {} seconds".format(1, (rospy.Time.now() - start).to_sec()))
+        self.detector.load_graph(graph_path, labels_path)
+        rospy.loginfo("detection graph successfully loaded")
 
-    def load_graph(self, pathToCkpt, pathToLabels):
-        print pathToCkpt
-        # load a (frozen) tensorflow model into memory
-        self.detection_graph = tf.Graph()
-        with self.detection_graph.as_default():
-            od_graph_def = tf.GraphDef()
-            with tf.gfile.GFile(pathToCkpt, 'rb') as fid:
-                serialized_graph = fid.read()
-                od_graph_def.ParseFromString(serialized_graph)
-                tf.import_graph_def(od_graph_def, name='')
-
-        print "load label map"
-        print pathToLabels
-        # loading label map
-        self.label_map = label_map_util.load_labelmap(pathToLabels)
-        self.categories = label_map_util.convert_label_map_to_categories(self.label_map, max_num_classes=self.num_classes,
-                                                                         use_display_name=True)
-        self.category_index = label_map_util.create_category_index(self.categories)
-
-    def detect(self, image_np):
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.333)
-        with self.detection_graph.as_default():
-            with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options), graph=self.detection_graph) as sess:
-                # Definite input and output Tensors for detection_graph
-                image_tensor = self.detection_graph.get_tensor_by_name('image_tensor:0')
-                # image_tensor = detection_graph.get_tensor_by_name('final_result')
-                # Each box represents a part of the image where a particular object was detected.
-                detection_boxes = self.detection_graph.get_tensor_by_name('detection_boxes:0')
-                # Each score represent how level of confidence for each of the objects.
-                # Score is shown on the result image, together with the class label.
-                detection_scores = self.detection_graph.get_tensor_by_name('detection_scores:0')
-                detection_classes = self.detection_graph.get_tensor_by_name('detection_classes:0')
-                num_detections = self.detection_graph.get_tensor_by_name('num_detections:0')
-
-                # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
-                image_np_expanded = np.expand_dims(image_np, axis=0)
-                # Actual detection.
-                (self.boxes, self.scores, self.classes, self.num) = sess.run([
-                    detection_boxes, detection_scores, detection_classes, num_detections],
-                    feed_dict={image_tensor: image_np_expanded})
-        result = []
-        boxes = []
-        scores = []
-        classes = []
-        # filter results with low scores
-        for i in range(0,len(self.scores[0])):
-            if self.scores[0][i] >= detection_threshold:
-                scores.append(self.scores[0][i])
-                boxes.append(self.boxes[0][i])
-                classes.append(self.classes[0][i])
-                print "found ", self.get_label(self.classes[0][i]), " with score ", self.scores[0][i], "at: ", self.boxes[0][i]
-        result.append(boxes)
-        result.append(scores)
-        result.append(classes)
-        return classes, scores, boxes
-
-    def get_label(self, classId):
-        return self.category_index[classId]['name']
 
     def _detect_srv_callback(self, req):
         """ Callback function for the detection. It saves the image on a temporary location and sets _do_detection
@@ -164,12 +103,12 @@ class TensorflowObjectDetection:
         if not self._do_detection:
             return
 
-        classes, scores, boxes = self.detect(self._bgr_image)
+        classes, scores, boxes = self.detector.detect(self._bgr_image)
 
         # add results
         for i in range(0,len(classes)):
             detection = Detection()
-            category_probability = CategoryProbability(label=self.category_index[classes[i]]['name'], probability=scores[i])
+            category_probability = CategoryProbability(label=self.detector.get_label(classes[i]), probability=scores[i])
             roi = boxes[i]
             detection.category_probability = category_probability
             detection.bbox.y_min = roi[0]
@@ -188,8 +127,8 @@ if __name__ == '__main__':
     try:
         _graph_path = os.path.expanduser(rospy.get_param("~graph_path"))
         _labels_path = os.path.expanduser(rospy.get_param("~labels_path"))
-        num_classes = rospy.get_param("~num_classes")
-        detection_threshold = rospy.get_param("~detection_threshold")
+        num_classes = rospy.get_param("~num_classes", 99)
+        detection_threshold = rospy.get_param("~detection_threshold", 0.5)
         save_images = rospy.get_param("~save_images", True)
 
         save_images_folder = None
@@ -200,12 +139,11 @@ if __name__ == '__main__':
         sys.exit(1)
 
     # Create object
-    object_detection = TensorflowObjectDetection(graph_path=_graph_path,
-                                                 labels_path=_labels_path,
-                                                 save_images_folder=save_images_folder,
-                                                 num_classes=num_classes,
-                                                 detection_threshold=detection_threshold)
-
+    object_detection = TensorflowDetectionNode(graph_path=_graph_path,
+                                               labels_path=_labels_path,
+                                               save_images_folder=save_images_folder,
+                                               num_classes=num_classes,
+                                               detection_threshold=detection_threshold)
     # Start update loop
     r = rospy.Rate(100.0)
     while not rospy.is_shutdown():
