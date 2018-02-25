@@ -128,7 +128,7 @@ class EvaluateNet:
         return correct, wrong, unkown_detected, to_find, image
 
 
-    def evaluateGraphs(self, path, label_map, num_classes, doRecognition=True):
+    def evaluateGraphs(self, path, label_map, num_classes, doRecognition=True, saveImages=True):
         index = 0
         for dirname, dirnames, filenames in os.walk(path):
             for filename in filenames:
@@ -144,10 +144,34 @@ class EvaluateNet:
                         self.total_unkown_detected = self.total_unkown_detected + unkown_detected
                         self.total_images = self.total_images + 1
                         self.total_to_find = self.total_to_find + to_find
-                        save_filename = '{}/eval_image{}.jpg'.format(savepath, index)
-                        # print("save image to: ", save_filename)
-                        cv2.imwrite(save_filename, image)
-                        index = index + 1
+                        if saveImages:
+                            save_filename = '{}/eval_image{}.jpg'.format(savepath, index)
+                            cv2.imwrite(save_filename, image)
+                            index = index + 1
+
+    def printAndLog(self, graph_path, save_path):
+        filename = save_path + "/log" + str(self.index) + ".txt"
+
+
+        total_detected = eval.total_correct+eval.total_wrong
+        log_str = graph_path + "\n\nevaluated with {} images".format(eval.total_images) \
+                  + "\ndetections: {} of {} ({}%)".format(total_detected,eval.total_to_find,(total_detected*100/eval.total_to_find)) \
+                  + "\ncorrect labels: {} of {} ({}%)".format(eval.total_correct, total_detected, (eval.total_correct*100/total_detected)) \
+                  + "\nunknown detections: {} ({} per image)\n".format(eval.total_unkown_detected, (float(eval.total_unkown_detected)/float(eval.total_images)))
+
+        label_file = open(filename, 'w')
+        label_file.write(log_str)
+        self.index += 1
+
+        print(log_str)
+        print("save log at: {}".format(filename))
+
+        #reset variables
+        self.total_correct = 0
+        self.total_wrong = 0
+        self.total_images = 0
+        self.total_unkown_detected = 0
+        self.total_to_find = 0
 
 
 if __name__ == "__main__":
@@ -180,34 +204,28 @@ if __name__ == "__main__":
     else:
         savepath = "/tmp"
 
-    if (len(sys.argv) == 8):
-        doRecognition = sys.argv[7]
-    else:
-        doRecognition = True
-
-
+    doRecognition = True
     threshold = 0.3
-    print("save eval images in {}".format(savepath))
+    print("save eval images and logs in {}".format(savepath))
     print("treshold: {}".format(threshold))
     print("doRecognition = {}".format(doRecognition))
 
     eval = EvaluateNet(threshold)
 
-
-
-#    for detectiongraphs
- #       loaddetectiongraph
-  #      if doRecognition:
-   #         for recognitiongraphs
-    #            loadrecognitiongraph
-     #           evaluateImage
-      #  else:
-
-
+    # load recognition graph
     eval.recognizer.load_graph(graph_r,labels_r)
-    eval.detector.load_graph(graph_d,label_map_d)
-    eval.evaluateGraphs(path, label_map, num_classes, True)
 
-    print("detected ", eval.total_correct, " correct and ", eval.total_wrong, " wrong of ", eval.total_to_find, " objects,")
-    print("detected ", eval.total_unkown_detected, " unknown objects in ", eval.total_images, " images")
+    # iterate through all detections graphs: load and evaluate
+    for dirname, dirnames, filenames in os.walk(graph_d):
+        for filename in filenames:
+            filepath = dirname + '/' + filename
+            if 'frozen_inference_graph' in filename:
+                print ("evaluate with graph: {}".format(filepath))
+                eval.detector.load_graph(filepath, label_map_d)
+                eval.evaluateGraphs(path, label_map, num_classes, True, False)
+                eval.printAndLog(graph_d, savepath)
+
+    #eval.detector.load_graph(graph_d,label_map_d)
+    #eval.evaluateGraphs(path, label_map, num_classes, True)
+
     print '\033[1m\033[92mDone!\033[0m'
