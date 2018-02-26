@@ -28,6 +28,7 @@ class EvaluateNet:
         self.total_unkown_detected = 0
         self.total_to_find = 0
         self.index = 0
+        self.log_str = ""
 
         self._filename = "/tmp/rec_image.png"
 
@@ -150,22 +151,30 @@ class EvaluateNet:
                             index = index + 1
 
     def printAndLog(self, graph_path, save_path):
-        filename = save_path + "/log" + str(self.index) + ".txt"
-
+        filename = save_path + "/log.txt"
 
         total_detected = eval.total_correct+eval.total_wrong
-        log_str = graph_path + "\n\nevaluated with {} images".format(eval.total_images) \
-                  + "\ndetections: {} of {} ({}%)".format(total_detected,eval.total_to_find,(total_detected*100/eval.total_to_find)) \
-                  + "\ncorrect labels: {} of {} ({}%)".format(eval.total_correct, total_detected, (eval.total_correct*100/total_detected)) \
-                  + "\nunknown detections: {} ({} per image)\n".format(eval.total_unkown_detected, (float(eval.total_unkown_detected)/float(eval.total_images)))
+        print("total detected: {}".format(total_detected))
+        recognize_percent = 0.0
+        detect_percent = 0.0
+        if not (total_detected == 0):
+            recognize_percent = float(eval.total_correct)
+            recognize_percent = recognize_percent/float(total_detected)
+        if not (eval.total_to_find == 0):
+            detect_percent = float(total_detected)
+            detect_percent = detect_percent/float(eval.total_to_find)
+
+        print_str = graph_path + "\nevaluated with {} images".format(eval.total_images) \
+                  + "\ndetections: {} of {} ({})".format(total_detected,eval.total_to_find, detect_percent) \
+                  + "\ncorrect labels: {} of {} ({})".format(eval.total_correct, total_detected, recognize_percent) \
+                  + "\nunknown detections: {} ({} per image)\n".format(eval.total_unkown_detected, (eval.total_unkown_detected/eval.total_images))
+        print(print_str)
+        unknown_percent = float(eval.total_unkown_detected) / float(eval.total_images)
+        self.log_str = self.log_str + str(detect_percent) + "\t" + str(recognize_percent) + "\t" + str(unknown_percent) + "\t" + graph_path + "\n"
 
         label_file = open(filename, 'w')
-        label_file.write(log_str)
-        self.index += 1
-
-        print(log_str)
+        label_file.write(self.log_str)
         print("save log at: {}".format(filename))
-
         #reset variables
         self.total_correct = 0
         self.total_wrong = 0
@@ -223,7 +232,7 @@ if __name__ == "__main__":
                 print ("evaluate with graph: {}".format(filepath))
                 eval.detector.load_graph(filepath, label_map_d)
                 eval.evaluateGraphs(path, label_map, num_classes, True, False)
-                eval.printAndLog(graph_d, savepath)
+                eval.printAndLog(filepath, savepath)
 
     #eval.detector.load_graph(graph_d,label_map_d)
     #eval.evaluateGraphs(path, label_map, num_classes, True)
