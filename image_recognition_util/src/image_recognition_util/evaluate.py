@@ -36,6 +36,7 @@ def evaluateDetection(annotatedList, detectedList, threshold, image):
                     idList.append(i)
     # draw boxes that didn't match any annotated object
     for i in range(0, len(detectedList)):
+        detected = detectedList[i]
         if (i not in idList):
             #TODO if label = unknown -> color green -> num_correct++
             #blue
@@ -55,16 +56,46 @@ def drawBbox(color, image, detected):
                 1)
 
 def matchBoundingBoxes(detected, annotated):
-    aWidth = annotated.bbox.xmax - annotated.bbox.xmin
-    aHeight = annotated.bbox.ymax - annotated.bbox.ymin
-    maxDistX = aWidth*0.5
-    maxDistY = aHeight*0.5
+
+    #Detected vars
+    xmax_det = detected.bbox.xmax
+    xmin_det = detected.bbox.xmin
+    ymax_det = detected.bbox.ymax
+    ymin_det = detected.bbox.ymin
+    width_det = xmax_det - xmin_det
+    height_det = ymax_det - ymin_det
+    area_det = width_det * height_det
+
+
+
+    #Annotated vars
+    xmax_an = annotated.bbox.xmax
+    xmin_an = annotated.bbox.xmin
+    ymax_an = annotated.bbox.ymax
+    ymin_an = annotated.bbox.ymin
+    width_an = xmax_an - xmin_an
+    height_an = ymax_an - ymin_an
+    area_an = width_an * height_an
+
+    innerArea = max(0, min(xmax_det, xmax_an) - max(xmin_det, xmin_an)) * max(0, min(ymax_det, ymax_an) - max(ymin_det, ymin_an))
+    outerArea = area_an + area_det - (2 * innerArea)
+    if (innerArea == 0):
+        ratio = 5
+    else:
+        ratio = outerArea / float(innerArea)  # the smaller the better
+
+    # relative distances
+    maxDistX = area_an*0.5
+    maxDistY = area_an*0.5
     # alternatively match centroids of bboxes
     # or evaluate overlapping area of bboxes
 
-    if (inRange(detected.bbox.xmin,annotated.bbox.xmin,maxDistX) and inRange(detected.bbox.ymin,annotated.bbox.ymin,maxDistY)
-        and inRange(detected.bbox.xmax,annotated.bbox.xmax,maxDistX)
-        and inRange(detected.bbox.ymax,annotated.bbox.ymax,maxDistY)):
+    if (ratio < 2):
+        return True
+
+
+    if (inRange(xmin_det,xmin_an,maxDistX) and inRange(ymin_det,ymin_an,maxDistY)
+        and inRange(xmax_det,xmax_an,maxDistX) and inRange(ymax_det,ymax_an,maxDistY)):
         return True
     else:
         return False
