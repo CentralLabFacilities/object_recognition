@@ -127,6 +127,7 @@ class AnnotationPlugin(Plugin):
         self.label = ""
         self.output_directory = ""
         self.cls_id = None
+        self.save_every_n_frames = 5
 
 
     def classChange(self):
@@ -170,7 +171,14 @@ class AnnotationPlugin(Plugin):
         :param image: Image we would like to store
         """
         if image is not None and self.label is not None and self.output_directory is not None:
-            image_writer.write_annotated(self.output_directory, image, mask, self.label, self.cls_id, bbox, self._test_button.isChecked())
+            ids = []
+            labels = []
+            bboxes = []
+            ids.append(self.cls_id)
+            labels.append(self.label)
+            bboxes.append(bbox)
+            image_writer.write_roi(self.output_directory, image, self.label, bbox)
+            image_writer.write_annotated(self.output_directory, image, mask, labels, ids, bboxes, self._test_button.isChecked())
 
     def _get_output_directory(self):
         """
@@ -246,17 +254,19 @@ class AnnotationPlugin(Plugin):
             cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
             dil_size = self._sliderDil.value()
             eros_size = self._sliderEros.value()
-	    self.cv_image = self._image_widget.calc_bbox(cv_image, dil_size, eros_size)
-            self.image = self._image_widget.set_image(cv_image)
+            self._image_widget.calc_bbox(cv_image, dil_size, eros_size)
+            bboxes = []
+            bboxes.append(self._image_widget.get_bbox())
+            self._image_widget.set_image(cv_image,bboxes,None)
 
             if self.save:
-		if self.counter == 5:
-            	    self.numImg += 1
-            	    self._imgNum_label.setText(str(self.numImg))
-            	    self.store_image(self._image_widget.get_image(), self._image_widget.get_bbox(), self.cls_id, self._image_widget.get_mask())
-		    self.counter = 0
-	    	else:
-		    self.counter += 1
+                if self.counter == self.save_every_n_frames:
+                    self.numImg += 1
+                    self._imgNum_label.setText(str(self.numImg))
+                    self.store_image(self._image_widget.get_image(), self._image_widget.get_bbox(), self.cls_id, self._image_widget.get_mask())
+                    self.counter = 0
+                else:
+                    self.counter += 1
         except CvBridgeError as e:
             rospy.logerr(e)
 

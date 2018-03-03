@@ -43,7 +43,7 @@ def write_annotated(dir_path, image, mask, labels, cls_ids, bboxes, test=False):
     :param label: The label that is used for creating the sub directory if not exists
     :param verified: Whether we are sure the label is correct
     """
-    if (len(labels) >= 1):
+    if (len(labels) > 1):
         label = "mixed"
     else:
         label = labels[0]

@@ -155,9 +155,9 @@ class ImageWidget(QWidget):
 	    self.mask = mask1
 	    self.bbox = cv2.boundingRect(contours[largest_contour_index])
 	    self.bbox = (self.bbox[0], self.bbox[0] + self.bbox[2], self.bbox[1], self.bbox[1] + self.bbox[3])
-	    cv2.rectangle(image, (self.bbox[0], self.bbox[2]), (self.bbox[1], self.bbox[3]), (0, 0, 255))
+	    #cv2.rectangle(image, (self.bbox[0], self.bbox[2]), (self.bbox[1], self.bbox[3]), (0, 0, 255))
 
-        return image
+        return
 
     def get_image(self):
         return self._cv_image
@@ -195,6 +195,13 @@ class ImageWidget(QWidget):
                 cv2.putText(image, image_label, (bbox[0], bbox[2]), 0, 0.6,
                         color,
                         1)
+        # for lazy annotation:
+        if (bboxes is not None and labels is None):
+            for i in range (0,len(bboxes)):
+                bbox = bboxes[i]
+                color = (0, 0, 255)
+                cv2.rectangle(image, (bbox[0], bbox[2]),
+                          (bbox[1], bbox[3]), color, 1)
         self._qt_image = _convert_cv_to_qt_image(image)
         self.update()
 	return self._cv_image
