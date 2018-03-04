@@ -1,51 +1,68 @@
-from object import Object
-from object import BoundingBox
 import cv2
 
 #max distance of bounding box coordinated in pixel
 maxDistX = 1.0
 maxDistY = 1.0
 
+
 def evaluateDetection(annotatedList, detectedList, threshold, image):
-    num_correct = 0
-    num_wrong = 0
-    num_unknown_detected = 0
-    height, width, channels = image.shape
-    #draw annotated bboxes with color: black
-    color = (0,0,0)
+    num_correct = 0           # correct detected and recognized objects
+    num_wrong = 0             # correct detected but wrong recognized objects
+    num_wrong_detected = 0    # wrong detected objects
+
+    # draw annotated bboxes with color: black
+    color = (0, 0, 0)
     for annotated in annotatedList:
         drawBbox(color, image, annotated)
-    idList = []
-    for i in range(0,len(detectedList)):
-        detected = detectedList[i]
-        if (detected.prob > threshold):
-            for annotated in annotatedList:
-                if (matchBoundingBoxes(detected, annotated)):
-                    if (detected.label == annotated.label):
-                        num_correct = num_correct + 1
-                        #green
-                        color = (0,255,0)
-                        drawBbox(color, image, detected)
-                    else:
-                        num_wrong = num_wrong + 1
-                        #red
-                        color = (0, 0, 255)
-                        drawBbox(color, image, detected)
-                        #TODO unknown vs. known but false classified
-                    #remove annotated from list to prevent double detections
-                    idList.append(i)
-    # draw boxes that didn't match any annotated object
-    for i in range(0, len(detectedList)):
-        detected = detectedList[i]
-        if (i not in idList):
-            #TODO if label = unknown -> color green -> num_correct++
-            #blue
-            color = (255,0,0)
-            if (detected.label=="unknown"):
-                color = (0,255,0)
-            drawBbox(color, image, detected)
-            num_unknown_detected = num_unknown_detected + 1
-    return num_correct, num_wrong, num_unknown_detected, image
+
+
+    # evaluation loop for each detected object
+    for detected in detectedList:
+        correct_recognized = False
+        correct_detected = False  # false if none or to many annotations fit
+        double_detected = False   # check if a better detection exist
+
+        # check whether the object is correct detected and/or labeled
+        for annotated in annotatedList:
+            if (matchBoundingBoxes(detected, annotated) and detected.prob > threshold):
+                correct_detected += 1
+                if (detected.label == annotated.label):
+                    correct_recognized = True
+
+        # check if a better detection exist so it can be ignored
+        for other_detected in detectedList:
+            double_detected += doubleTest(detected, other_detected)
+
+        # coloring the detection
+        if (double_detected):
+            color = (0, 255, 255)  # yellow
+        elif (correct_detected):
+            if (correct_recognized):
+                num_correct += 1
+                color = (0, 255, 0)    # green
+            else:
+                num_wrong += 1
+                color = (0, 0, 255)    # red but why?
+        elif (detected.label == "unknown"):
+            num_correct += 1
+            color = (0, 255, 0)  # green
+        else:
+            num_wrong_detected += 1
+            color = (255, 0, 0)  # blue but why?
+
+        drawBbox(color, image, detected)
+
+    return num_correct, num_wrong, num_wrong_detected, image
+
+
+def doubleTest(detected, other_detected):
+
+    if (matchBoundingBoxes(detected, other_detected, 1) and
+         detected.label == other_detected.label and
+         detected.prob < other_detected.prob):
+        return True
+    return False
+
 
 def drawBbox(color, image, detected):
     height, width, channels = image.shape
@@ -55,7 +72,7 @@ def drawBbox(color, image, detected):
     cv2.putText(image, image_label, (int(detected.bbox.xmin * width), int(detected.bbox.ymin * height)), 0, 0.6, color,
                 1)
 
-def matchBoundingBoxes(detected, annotated):
+def matchBoundingBoxes(detected, annotated, max_ratio=2):
 
     #Detected vars
     xmax_det = detected.bbox.xmax
@@ -90,7 +107,7 @@ def matchBoundingBoxes(detected, annotated):
     # alternatively match centroids of bboxes
     # or evaluate overlapping area of bboxes
 
-    if (ratio < 2):
+    if (ratio < max_ratio):
         return True
 
 
