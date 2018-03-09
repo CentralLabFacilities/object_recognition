@@ -101,6 +101,9 @@ if __name__ == "__main__":
             if not os.path.exists(dirname.replace(image_path, save_path)):  # creates dir path
                 os.makedirs(dirname.replace(image_path, save_path))
 
+            if "mask" in filename:
+                continue
+
             # deals with all None-Image files
             if (imghdr.what(file_path) == None):
 
