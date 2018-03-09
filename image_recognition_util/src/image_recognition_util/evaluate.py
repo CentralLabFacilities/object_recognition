@@ -57,7 +57,7 @@ def evaluateDetection(annotatedList, detectedList, threshold, image):
 
 def doubleTest(detected, other_detected):
 
-    if (matchBoundingBoxes(detected, other_detected, 1) and
+    if (matchBoundingBoxes(detected, other_detected) and
          detected.label == other_detected.label and
          detected.prob < other_detected.prob):
         return True
