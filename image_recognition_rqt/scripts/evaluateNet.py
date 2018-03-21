@@ -6,6 +6,9 @@ from cv_bridge import CvBridge, CvBridgeError
 import sys
 import os
 
+# tensorflow
+import tensorflow as tf
+
 # object rec
 from image_recognition_util import evaluate
 from image_recognition_util.object import Object
@@ -16,6 +19,20 @@ from object_detection.utils import label_map_util
 from object_tracking_msgs.msg import CategoryProbability
 from tensorflow_ros import detector
 from tensorflow_ros import recognizer
+
+
+flags = tf.app.flags
+flags.DEFINE_string('testset', '', 'Path to testset.')
+flags.DEFINE_string('detect_graph', '', 'Path to detection graph.')
+flags.DEFINE_string('labels', '', 'Path to labelMap.')
+flags.DEFINE_string('rec_graph', '', 'Path to recognition graph.')
+flags.DEFINE_string('logdir', '/tmp', 'Save location for logs and images.')
+flags.DEFINE_integer('num_classes', 99, 'number of classes')
+flags.DEFINE_float('threshold', 0.5, 'detection threshold')
+flags.DEFINE_boolean('save_images', False, 'Save evaluation images.')
+flags.DEFINE_boolean('recognize', True, 'Do recognition for each detection.')
+
+FLAGS = flags.FLAGS
 
 
 class EvaluateNet:
@@ -146,12 +163,12 @@ class EvaluateNet:
                         self.total_images = self.total_images + 1
                         self.total_to_find = self.total_to_find + to_find
                         if saveImages:
-                            save_filename = '{}/eval_image{}.jpg'.format(savepath, index)
+                            save_filename = '{}/eval_image{}.jpg'.format(logdir, index)
                             cv2.imwrite(save_filename, image)
                             index = index + 1
 
-    def printAndLog(self, graph_path, save_path):
-        filename = save_path + "/log.txt"
+    def printAndLog(self, graph_path, logdir):
+        filename = logdir+"/log.txt"
 
         total_detected = eval.total_correct+eval.total_wrong
         print("total detected: {}".format(total_detected))
@@ -172,9 +189,12 @@ class EvaluateNet:
         unknown_percent = float(eval.total_unkown_detected) / float(eval.total_images)
         self.log_str = self.log_str + str(detect_percent) + "\t" + str(recognize_percent) + "\t" + str(unknown_percent) + "\t" + graph_path + "\n"
 
+
+        print("save log at: {}".format(filename))
+        if not os.path.exists(logdir):
+            os.makedirs(logdir)
         label_file = open(filename, 'w')
         label_file.write(self.log_str)
-        print("save log at: {}".format(filename))
         #reset variables
         self.total_correct = 0
         self.total_wrong = 0
@@ -185,56 +205,85 @@ class EvaluateNet:
 
 if __name__ == "__main__":
 
-    # check for correct argument size
-    if not len(sys.argv) >= 4:
-        print '\033[91m' + 'Argument Error!\nUsage: python evaluateNet.py path_to_evalset path_to_graph path_to_labelmap path_to_rec_db num_classes [save_image_path]' + '\033[0m'
+    # check if flags are set
+    if not (FLAGS.testset and FLAGS.detect_graph and FLAGS.labels and FLAGS.rec_graph):
+        print '\033[91m' + 'Usage: python evaluateNet.py [args]\n' \
+                           'necessary:\n' \
+                           '\t--testset\n' \
+                           '\t--detect_graph\n' \
+                           '\t--labels\n' \
+                           '\t--rec_graph\n' \
+                           'optional:\n' \
+                           '\t--num_classes\t default: 99\n' \
+                           '\t--threshold\t default: 0.5\n' \
+                           '\t--save_images\t default: False\n' \
+                           '\t--recognize\t default: True\n' \
+                           '\t--logdir\t default: /tmp\n' \
+                           '\033[0m'
         exit(1)
 
-    # check directory arguments
-    if not os.path.isdir(sys.argv[1]):
-        print '\033[91m' + sys.argv[1] + ' is not a directory!' + '\033[0m'
+    # get flag values
+    testset = FLAGS.testset
+    graph_d = FLAGS.detect_graph
+    graph_r = FLAGS.rec_graph + "/output_graph.pb"
+    labels_r = FLAGS.rec_graph + "/output_labels.txt"
+    label_map_d = FLAGS.labels
+
+    # check directories and files
+    if not os.path.isdir(testset):
+        print '\033[91m' + testset + ' is not a directory!' + '\033[0m'
         exit(1)
-    if not os.path.isdir(sys.argv[4]):
-        print '\033[91m' + sys.argv[4] + ' is not a directory!' + '\033[0m'
+    if not os.path.isdir(graph_d):
+        print '\033[91m' + graph_d + ' is not a directory!' + '\033[0m'
+        exit(1)
+    if not os.path.isfile(label_map_d):
+        print '\033[91m File ' + label_map_d + ' does not exist!' + '\033[0m'
+        exit(1)
+    if not os.path.isfile(graph_r):
+        print '\033[91m File ' + graph_r + ' does not exist!' + '\033[0m'
+        exit(1)
+    if not os.path.isfile(labels_r):
+        print '\033[91m File ' + labels_r + ' does not exist!' + '\033[0m'
+        exit(1)
+    if not os.path.isfile(testset+"/labelMap.pbtxt"):
+        print '\033[91m File ' + testset+ '/labelMap.pbtxt does not exist!' + '\033[0m'
         exit(1)
 
+    # get optional flags
+    num_classes = FLAGS.num_classes
+    save_images = FLAGS.save_images
+    logdir = FLAGS.logdir
+    doRecognition = FLAGS.recognize
+    threshold = FLAGS.threshold
 
-    # parse arguments
-    path = sys.argv[1]
-    label_map = label_map_util.load_labelmap(path+"/labelMap.pbtxt")
-    graph_d=sys.argv[2]
-    label_map_d=sys.argv[3]
-    graph_r=sys.argv[4]+"/output_graph.pb"
-    labels_r=sys.argv[4]+"/output_labels.txt"
-    num_classes = int(sys.argv[5])
+    # load label map for testset
+    label_map = label_map_util.load_labelmap(testset+"/labelMap.pbtxt")
 
-    if (len(sys.argv) == 7):
-        savepath = sys.argv[6]
-    else:
-        savepath = "/tmp"
-
-    doRecognition = True
-    threshold = 0.3
-    print("save eval images and logs in {}".format(savepath))
+    # print settings
+    print("save eval images and logs in {}".format(logdir))
+    print("save images = {}".format(save_images))
     print("treshold: {}".format(threshold))
     print("doRecognition = {}".format(doRecognition))
+    print("num classes = {}".format(num_classes))
 
+    # eval object
     eval = EvaluateNet(threshold)
 
     # load recognition graph
     eval.recognizer.load_graph(graph_r,labels_r)
 
-    # iterate through all detections graphs: load and evaluate
+    # iterate through all detections graphs in the given directory, then load and evaluate
     for dirname, dirnames, filenames in os.walk(graph_d):
         for filename in filenames:
             filepath = dirname + '/' + filename
             if 'frozen_inference_graph' in filename:
-                print ("evaluate with graph: {}".format(filepath))
+
+                print ("evaluate graph: {}".format(filepath))
                 eval.detector.load_graph(filepath, label_map_d)
-                eval.evaluateGraphs(path, label_map, num_classes, True, False)
-                eval.printAndLog(filepath, savepath)
+                eval.evaluateGraphs(testset, label_map, num_classes, doRecognition, save_images)
+                eval.printAndLog(filepath, logdir)
 
     #eval.detector.load_graph(graph_d,label_map_d)
-    #eval.evaluateGraphs(path, label_map, num_classes, True)
+    #eval.evaluateGraphs(testset, label_map, num_classes, True)
 
     print '\033[1m\033[92mDone!\033[0m'
