@@ -11,7 +11,7 @@ from python_qt_binding.QtCore import *
 
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
-from object_tracking_msgs.msg import CategoryProbability
+from object_tracking_msgs.msg import ObjectLocation, Hypothesis
 
 from image_widget import ImageWidget
 from dialogs import option_dialog, warning_dialog, info_dialog
@@ -59,6 +59,7 @@ class DetectPlugin(Plugin):
         # Set subscriber and service to None
         self._sub = None
         self._srv = None
+        self._srv_depthLookup = None
 
         self.tf_detector = TfDetector()
         self.cv_image = None
@@ -69,13 +70,24 @@ class DetectPlugin(Plugin):
         Method that calls the DetectObjects.srv
         :param roi_image: Selected roi_image by the user
         """
+        imageReq = self.bridge.cv2_to_imgmsg(image, "bgr8")
         try:
-            result = self._srv(image=self.bridge.cv2_to_imgmsg(image, "bgr8"))
+            result = self._srv(imageReq)
         except Exception as e:
             warning_dialog("Service Exception", str(e))
             return
         print result
-        self.visualize_bounding_boxes(result.detections, image)
+        #Call depth lookup and segmentation
+        #self.triggerSegmentation(result)
+        self.visualize_bounding_boxes(result.objectLocationList, image)
+
+
+    def triggerSegmentation(self,detectionResult):
+        depthLookupResult = self._srv_depthLookup(detectionResult)
+
+        #todo: service call to segmentation with result of depthLookup (use 1 objectShape)
+        #self._srv_segment(depthLookupResult)
+        print ""
 
     # TODO: replace with button callback
     def image_roi_callback(self, roi_image):
@@ -99,13 +111,13 @@ class DetectPlugin(Plugin):
         # display image with bounding boxes using opencv
         height, width, channels = image.shape
         for i in range(0, len(result)):
-            prob = result[i].category_probability.probability
-            label = result[i].category_probability.label
-            bbox = result[i].bbox
-            cv2.rectangle(image, (int(bbox.x_min * width), int(bbox.y_min * height)),
-                          (int(bbox.x_max * width), int(bbox.y_max * height)), (0, 100, 200), 2)
+            prob = result[i].hypotheses.reliability
+            label = result[i].hypotheses.label
+            bbox = result[i].bounding_box
+            cv2.rectangle(image, (int(bbox.x_offset * width), int(bbox.y_offset * height)),
+                          (int((bbox.x_offset + bbox.width) * width), int((bbox.y_offset + bbox.height) * height)), (0, 100, 200), 2)
             image_label = '%s %f' % (label, prob)
-            cv2.putText(image, image_label, (int(bbox.x_min * width), int(bbox.y_min * height)), 0, 0.4, (0, 0, 255), 1)
+            cv2.putText(image, image_label, (int(bbox.x_offset * width), int(bbox.y_offset* height)), 0, 0.4, (0, 0, 255), 1)
         cv2.imshow('image', image)
         cv2.waitKey(0)
 
@@ -166,7 +178,14 @@ class DetectPlugin(Plugin):
             self._srv = rospy.ServiceProxy(srv_name, rosservice.get_service_class_by_name(srv_name))
         else:
             rospy.loginfo("Service client with name '%s' cannot be created" % srv_name)
-            rospy.loginfo("try: /detect")
+        #set depthLookup service
+        if self._srv_depthLookup:
+            return
+        dl_name = "/depthLookup"
+        if dl_name in rosservice.get_service_list():
+            self._srv_depthLookup = rospy.ServiceProxy(dl_name, rosservice.get_service_class_by_name(dl_name))
+        else:
+            rospy.loginfo("Service client with name '%s' cannot be created" % dl_name)
 
     def shutdown_plugin(self):
         """

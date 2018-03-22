@@ -17,7 +17,7 @@ import numpy as np
 # object recognition
 import object_tracking_msgs
 from object_tracking_msgs.srv import DetectObjects
-from object_tracking_msgs.msg import Detection, CategoryProbability
+from object_tracking_msgs.msg import ObjectLocation, Hypothesis
 from image_recognition_util import image_writer_test_gui
 from tensorflow_ros import detector
 
@@ -43,7 +43,7 @@ class TensorflowDetectionNode:
         #init detector
         self.detector = detector.Detector(num_classes, detection_threshold)
 
-        self._detections = []  # List with Detections s
+        self._objectLocationList = []  # List with Detections s
         self._bridge = CvBridge()
         self._detect_srv = rospy.Service('detect', DetectObjects, self._detect_srv_callback)
         self._do_detection = False  # Indicates whether a new request has been received and thus detection must
@@ -84,14 +84,14 @@ class TensorflowDetectionNode:
         size = self._bgr_image.shape[:2]  # For now, we assume the entire image is the ROI
         self._size['height'] = size[0]
         self._size['width'] = size[1]
-        self._detections = []
+        self._objectLocationList = []
         self._do_detection = True
 
         # Wait until the request has been processed and return the result
         r = rospy.Rate(1000.0)  # Not a problem to spin quickly
         while not rospy.is_shutdown():
             if not self._do_detection:
-                return {"detections": self._detections}
+                return {"detections": self._objectLocationList}
 
         # Return an empty result if rospy has been shutdown
         return {"detections": []}
@@ -107,15 +107,15 @@ class TensorflowDetectionNode:
 
         # add results
         for i in range(0,len(classes)):
-            detection = Detection()
-            category_probability = CategoryProbability(label=self.detector.get_label(classes[i]), probability=scores[i])
+            objectLocation = ObjectLocation()
+            hypothesis = Hypothesis(label=self.detector.get_label(classes[i]), reliability=scores[i])
             roi = boxes[i]
-            detection.category_probability = category_probability
-            detection.bbox.y_min = roi[0]
-            detection.bbox.x_min = roi[1]
-            detection.bbox.y_max = roi[2]
-            detection.bbox.x_max = roi[3]
-            self._detections.append(detection)
+            objectLocation.hypotheses = hypothesis
+            objectLocation.bounding_box.y_offset = roi[0]
+            objectLocation.bounding_box.x_offset = roi[1]
+            objectLocation.bounding_box.height = roi[2]-roi[0]
+            objectLocation.bounding_box.width = roi[3]-roi[1]
+            self._objectLocationList.append(objectLocation)
 
         self._do_detection = False
 
