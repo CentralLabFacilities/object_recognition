@@ -7,7 +7,20 @@ from object_detection.utils import label_map_util
 class ObjectsetUtils():
 
     def __init__(self):
-        print "init"
+        print "init object set utils"
+
+    def convert(self, size, box):
+        dw = 1. / size[0]
+        dh = 1. / size[1]
+        x = (box.xmin + box.xmax) / 2.0
+        y = (box.ymin + box.ymax) / 2.0
+        w = box.xmax- box.xmin
+        h = box.ymax - box.ymin
+        x = x * dw
+        w = w * dw
+        y = y * dh
+        h = h * dh
+        return (x, y, w, h)
 
     def readAnnotated(self, labelpath, label_map, num_classes):
         annotatedList = []
@@ -31,6 +44,26 @@ class ObjectsetUtils():
             a = Object(class_text, 1.0, xmin, xmax, ymin, ymax)
             annotatedList.append(a)
         return annotatedList
+
+    def writeAnnotationFile(self, labelpath, idList, boxList, image):
+        if not (len(idList) == len(boxList)):
+            print("error: list size mismatch (idList: {}, boxList: {}".format(len(idList),len(boxList)))
+            return
+        label_str = ""
+        for i in range(0,len(idList)):
+            bbox = boxList[i]
+            id = idList[i]
+
+            # convert bbox for darknet format
+            h, w = image.shape[:2]
+            bb = self.convert((w, h), bbox)
+
+            # write converted bbox as label in label_dir
+            if id is not None:
+                label_str = label_str + (str(id) + " " + " ".join([str(a) for a in bb]) + '\n')
+
+        label_file = open(labelpath, 'w+')
+        label_file.write(label_str)
 
     def getAbsoluteRoiCoordinates(self, bbox, w, h):
         absBbox = BoundingBox(0,0,0,0)
