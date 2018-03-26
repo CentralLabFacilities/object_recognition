@@ -129,3 +129,16 @@ class ObjectsetUtils():
                 line = content[i].split(' ')
                 labelList.append(line[0])
         return labelList
+
+    def getBboxByMask(self,mask):
+        mask, contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        largest_area = 0
+        largest_contour_index = 0
+        for i in range(len(contours)):
+            a = cv2.contourArea(contours[i], False)
+            if a > largest_area:
+                largest_area = a
+                largest_contour_index = i
+        box = cv2.boundingRect(contours[largest_contour_index])
+        bbox = BoundingBox(box[0],box[0]+box[2],box[1],box[1]+box[3])
+        return bbox
