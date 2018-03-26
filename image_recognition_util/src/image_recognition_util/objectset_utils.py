@@ -1,5 +1,6 @@
 import os
 import sys
+import cv2
 from image_recognition_util.object import Object
 from image_recognition_util.object import BoundingBox
 from object_detection.utils import label_map_util
@@ -65,13 +66,21 @@ class ObjectsetUtils():
         label_file = open(labelpath, 'w+')
         label_file.write(label_str)
 
-    def getAbsoluteRoiCoordinates(self, bbox, w, h):
+    def getAbsoluteRoiCoordinates(self, normBox, w, h):
         absBbox = BoundingBox(0,0,0,0)
-        absBbox.xmin = int(bbox.xmin * w)
-        absBbox.xmax = int(bbox.xmax * w)
-        absBbox.ymin = int(bbox.ymin * h)
-        absBbox.ymax = int(bbox.ymax * h)
+        absBbox.xmin = int(normBox.xmin * w)
+        absBbox.xmax = int(normBox.xmax * w)
+        absBbox.ymin = int(normBox.ymin * h)
+        absBbox.ymax = int(normBox.ymax * h)
         return absBbox
+
+    def getNormalizedRoiCoordinates(self, absBox, w, h):
+        normBox = BoundingBox(0,0,0,0)
+        normBox.xmin = absBox.xmin/float(w)
+        normBox.xmax = absBox.xmax/float(w)
+        normBox.ymin = absBox.ymin/float(h)
+        normBox.ymax = absBox.ymax/float(h)
+        return normBox
 
     def getNormalizedRoiFromYolo(self,labelpath):
         with open(labelpath) as f:
