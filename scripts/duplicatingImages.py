@@ -123,9 +123,9 @@ def blur_image(image, labels, boxes, new_path, blurring_array):
 if __name__ == "__main__":
 
     # check for correct argument size
-    if not len(sys.argv) >= 6:
+    if not len(sys.argv) >= 8:
         print '\033[91m' + 'Argument Error!\nUsage: python duplicatingImages.py ' \
-                           'path_to_imageset save_image_path [0.2,0.5,1.5] [0.3,0.7] [4,8,15]' + '\033[0m'
+                           'path_to_imageset save_image_path bg_path <light> <scale> <blur> <rotate>' + '\033[0m'
         exit(1)
 
     if not os.path.isdir(sys.argv[1]):
@@ -134,26 +134,36 @@ if __name__ == "__main__":
     if not os.path.isdir(sys.argv[2]):
         print '\033[91m' + sys.argv[2] + ' is not a directory!' + '\033[0m'
         exit(1)
-    if '[' not in sys.argv[3] and ']' not in sys.argv[3]:
-        print '\033[91m' + sys.argv[3] + ' is not a lighting array like [0.2,0.5,1.5]' + '\033[0m'
+    if not os.path.isdir(sys.argv[3]):
+        print '\033[91m' + sys.argv[3] + ' is not a directory!' + '\033[0m'
         exit(1)
     if '[' not in sys.argv[4] and ']' not in sys.argv[4]:
-        print '\033[91m' + sys.argv[4] + ' is not a scaling array like [0.3,0.7]' + '\033[0m'
+        print '\033[91m' + sys.argv[4] + ' is not a lighting array like [0.2,0.5,1.5]' + '\033[0m'
         exit(1)
     if '[' not in sys.argv[5] and ']' not in sys.argv[5]:
-        print '\033[91m' + sys.argv[5] + ' is not a blurring array like [4,8,15]' + '\033[0m'
+        print '\033[91m' + sys.argv[5] + ' is not a scaling array like [0.3,0.7]' + '\033[0m'
+        exit(1)
+    if '[' not in sys.argv[6] and ']' not in sys.argv[6]:
+        print '\033[91m' + sys.argv[6] + ' is not a blurring array like [4,8,15]' + '\033[0m'
+        exit(1)
+    if '[' not in sys.argv[7] and ']' not in sys.argv[7]:
+        print '\033[91m' + sys.argv[7] + ' is not a rotation array like [min,max]' + '\033[0m'
         exit(1)
 
     image_path = sys.argv[1]
     save_path = sys.argv[2]
-    lighting_array = [float(x) for x in sys.argv[3][1:len(sys.argv[3]) - 1].split(',')]
+    bg_path = sys.argv[3]
+    lighting_array = [float(x) for x in sys.argv[4][1:len(sys.argv[4]) - 1].split(',')]
     print "lightning array: " + str(lighting_array)
 
-    scaling_array = [float(x) for x in sys.argv[4][1:len(sys.argv[4]) - 1].split(',')]
+    scaling_array = [float(x) for x in sys.argv[5][1:len(sys.argv[5]) - 1].split(',')]
     print "scaling array: " + str(scaling_array)
 
-    blurring_array = [int(x) for x in sys.argv[5][1:len(sys.argv[5]) - 1].split(',')]
+    blurring_array = [int(x) for x in sys.argv[6][1:len(sys.argv[6]) - 1].split(',')]
     print "blurring array: " + str(blurring_array)
+
+    rotation_array = [int(x) for x in sys.argv[7][1:len(sys.argv[7]) - 1].split(',')]
+    print "rotation array: " + str(rotation_array)
 
     for dirname, dirnames, filenames in os.walk(image_path):
         for filename in filenames:
@@ -161,7 +171,6 @@ if __name__ == "__main__":
 
             if not os.path.exists(dirname.replace(image_path, save_path)):  # creates dir path
                 os.makedirs(dirname.replace(image_path, save_path))
-
 
             # deals with all None-Image files
             if (imghdr.what(file_path) == None):
@@ -182,6 +191,23 @@ if __name__ == "__main__":
                     new_file.close()
                 continue
 
+            # (erode mask?)
+            # rotate(fg, mask) -> fgCut, maskCut, h, w
+            # new bbox(0,0,w,h) for objectRoi
+            # for all bg_images (or random subset?):
+                # util.getAbsoluteRoiCoordinates(bgAnnotationList/ bgRoiList)
+                # getRandomPositionOnSurface(bbox, bgAnnotationList/ bgRoiList) -> randBbox
+                # placeRoiOnBackground(fgCut, maskCut, bg, bboxRand) -> newImage (object on bg)
+                # each 2? times:
+                    # scale image (random in range)
+                    # blur image (random in range)
+                    # change ilumination (random in range)
+                    # mirror image (and keep orignal)
+
+                    # save every image and labels
+
+
+
             # image manipulation and saving
             label = False
             boxes = False
@@ -192,6 +218,12 @@ if __name__ == "__main__":
             new_path = file_path.replace(image_path, save_path)
 
             if label:
+                # -> save img and label
+
+                change_lighting(image, label, boxes, new_path, lighting_array)
+                mirror_image(image, label, boxes, new_path)
+                change_scale(image, label, boxes, new_path, scaling_array)
+
                 blur_image(image, label, boxes, new_path, blurring_array)
 
             # save image
