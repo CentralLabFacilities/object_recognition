@@ -54,6 +54,59 @@ def save_image(image, labels, boxes, path):
     if label:
         save_labels(path.replace("/images/", "/labels/").replace(".jpg", ".txt"), labels, boxes)
 
+def show(img,time):
+	cv2.imshow('img', img)
+	cv2.waitKey(time)
+
+def getRandomPositionOnSurface(bbox, bgAnnotationList):
+    # randomly choose one surface annotation
+    l = len(bgAnnotationList)
+    r = randint(0, l - 1)
+    surfaceBox = bgAnnotationList[r].bbox
+
+    # get possible range to place roi
+    roiW = (bbox.xmax - bbox.xmin)
+    roiH = (bbox.ymax - bbox.ymin)
+
+    limitLeft = surfaceBox.xmin + roiW
+    limitRight = surfaceBox.xmax
+    limitDown = surfaceBox.ymax
+    limitUp = max(roiH, surfaceBox.ymin)
+
+    if (limitRight < limitLeft or limitUp > limitDown):
+        print("Surface too small to place roi.")
+        return None
+
+    bboxRand = BoundingBox(0, 0, 0, 0)
+
+    # choose random point in surface range (bottom of object)
+    bboxRand.ymax = randint(limitUp, limitDown)
+    bboxRand.xmax = randint(limitLeft, limitRight)
+
+    # set other coordinates according to roi size
+    bboxRand.xmin = bboxRand.xmax - roiW
+    bboxRand.ymin = bboxRand.ymax - roiH
+
+    return bboxRand
+
+def placeRoiOnBackground(fgCut, maskCut, bg, bbox):
+
+    # cut out object and background based on mask inside the roi
+    maskInv = cv2.bitwise_not(maskCut)
+    fg = cv2.bitwise_and(fgCut, fgCut, mask=maskCut)
+    try:
+        bgCut = bg[bbox.ymin:bbox.ymax, bbox.xmin:bbox.xmax]
+        bgCut = cv2.bitwise_and(bgCut, bgCut, mask=maskInv)
+        roi = bgCut + fg
+        # insert roi in large image
+        h, w, c = bg.shape
+        new = np.zeros((h, w, c), np.uint8)
+        new[0:h, 0:w] = bg
+        new[bbox.ymin:bbox.ymin + roi.shape[0], bbox.xmin:bbox.xmin + roi.shape[1]] = roi
+        return new
+    except:
+        print("exception with mask-shape: {} and bg-shape: {}".format(maskCut.shape, bgCut.shape))
+
 
 # change the brightness of the image with the factors in the lightning array
 def change_lighting(image, labels, boxes, new_path, lighting_array):
@@ -178,6 +231,17 @@ if __name__ == "__main__":
                     new_file.close()
                 continue
 
+            label = False
+            boxes = False
+            image = cv2.imread(file_path)
+            if "/images/" in file_path and "mask" not in filename:
+                label, boxes = read_labels(file_path.replace("/images/", "/labels/").replace(".jpg", ".txt"))
+
+            new_path = file_path.replace(image_path, save_path)
+
+            if label:
+
+
             # (erode mask?)
             # rotate(fg, mask) -> fgCut, maskCut, h, w
             # new bbox(0,0,w,h) for objectRoi
@@ -195,22 +259,11 @@ if __name__ == "__main__":
 
 
 
-            # image manipulation and saving
-            label = False
-            boxes = False
-            image = cv2.imread(file_path)
-            if "/images/" in file_path and "mask" not in filename:
-                label, boxes = read_labels(file_path.replace("/images/", "/labels/").replace(".jpg", ".txt"))
 
-            new_path = file_path.replace(image_path, save_path)
-
-            if label:
-                # -> save img and label
-
-                change_lighting(image, label, boxes, new_path, lighting_array)
-                mirror_image(image, label, boxes, new_path)
-                change_scale(image, label, boxes, new_path, scaling_array)
-                blur_image(image, label, boxes, new_path, blurring_array)
+                #change_lighting(image, label, boxes, new_path, lighting_array)
+                #mirror_image(image, label, boxes, new_path)
+                #change_scale(image, label, boxes, new_path, scaling_array)
+                #blur_image(image, label, boxes, new_path, blurring_array)
 
             # save image
             cv2.imwrite(new_path, image)

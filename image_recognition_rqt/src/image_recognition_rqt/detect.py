@@ -70,26 +70,30 @@ class DetectPlugin(Plugin):
         Method that calls the DetectObjects.srv
         :param roi_image: Selected roi_image by the user
         """
-        print "srv callback"
         imageReq = self.bridge.cv2_to_imgmsg(image, "bgr8")
         try:
             result = self._srv(imageReq)
-            print "got result"
         except Exception as e:
             warning_dialog("Service Exception", str(e))
             return
-        print result
         #Call depth lookup and segmentation
-        #self.triggerSegmentation(result)
+        self.triggerSegmentation(result.objectLocationList)
         self.visualize_bounding_boxes(result.objectLocationList, image)
 
 
     def triggerSegmentation(self,detectionResult):
+        print(detectionResult)
+        print("set depth lookup request")
+        depthLookupRequest = []
+        #for i in range(0, len(detectionResult)):
+        #    depthLookupRequest.append(detectionResult[i])
+
+        print("do depth lookup")
         depthLookupResult = self._srv_depthLookup(detectionResult)
+        print depthLookupResult
 
         #todo: service call to segmentation with result of depthLookup (use 1 objectShape)
         #self._srv_segment(depthLookupResult)
-        print depthLookupResult
 
     # TODO: replace with button callback
     def image_roi_callback(self, roi_image):
@@ -109,9 +113,6 @@ class DetectPlugin(Plugin):
 
     def visualize_bounding_boxes(self, result, image):
         # visualization of detection results
-        # image_np = cv2.cvtColor(image_np,cv2.COLOR_BGR2RGB)
-        # display image with bounding boxes using opencv
-        height, width, channels = image.shape
         for i in range(0, len(result)):
             prob = result[i].hypotheses[0].reliability
             label = result[i].hypotheses[0].label
@@ -183,7 +184,7 @@ class DetectPlugin(Plugin):
         #set depthLookup service
         if self._srv_depthLookup:
             return
-        dl_name = "/depthLookup"
+        dl_name = "/clf_perception_depth_lookup_objects/depthLookup"
         if dl_name in rosservice.get_service_list():
             self._srv_depthLookup = rospy.ServiceProxy(dl_name, rosservice.get_service_class_by_name(dl_name))
         else:
