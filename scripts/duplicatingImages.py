@@ -3,36 +3,30 @@ import cv2
 # sys
 import sys
 import os
+import copy
 import imghdr
 # math
 import numpy as np
 import scipy.misc as misc
 from scipy import ndimage
-import matplotlib.pyplot as plt
+from random import randint
+
+from image_recognition_util.objectset_utils import ObjectsetUtils
 
 # global variable, sorry for that
 train_txt = False
+utils = ObjectsetUtils()
 
 
 # opens label files and returns the data
 def read_labels(labels_path):
-    label = []
-    boxes = []
+    labelList = utils.getLabelList(labels_path)
+    bboxList = utils.getRoiList(labels_path)
 
-    with open(labels_path) as f:
-        for line in f:
-            list = line.split()
-            label.append(int(list[0]))
-            for x in range(4):
-                boxes.append(float(list[x+1]))
-
-    num_lines=len(boxes)/4
-    boxes = np.array(boxes)
-    boxes = boxes.reshape((num_lines,4))
-    return label, boxes
+    return labelList, bboxList
 
 
-# save changed labels to new file
+# delete soon
 def save_labels(labels_path, label, boxes):
     new_file = open(labels_path, 'w+')
     content = ""
@@ -52,7 +46,7 @@ def save_image(image, labels, boxes, path):
     if train_txt:
         train_txt.write(path + '\n')
     if label:
-        save_labels(path.replace("/images/", "/labels/").replace(".jpg", ".txt"), labels, boxes)
+        utils.writeAnnotationFile(path.replace("/images/", "/labels/").replace(".jpg", ".txt"), labels, boxes, image)
 
 
 # change the brightness of the image with the factors in the lightning array
@@ -68,9 +62,10 @@ def change_lighting(image, labels, boxes, new_path, lighting_array):
 # simply mirror the image and the bounding boxes
 def mirror_image(image, labels, boxes, new_path):
     tmp_image = np.fliplr(image)
-    tmp_boxes = boxes.copy()
-    for i in range(tmp_boxes.shape[0]):
-        tmp_boxes[i][0] = abs(tmp_boxes[i][0]-1)
+    tmp_boxes = copy.deepcopy(boxes)
+    for bbox in tmp_boxes:
+        bbox.xmax = abs(bbox.xmax-1)
+        bbox.xmin = abs(bbox.xmin-1)
     tmp_path = new_path[0:(len(new_path)-4)] + "_m" + new_path[(len(new_path)-4):]
     save_image(tmp_image, labels, tmp_boxes, tmp_path)
 
@@ -79,7 +74,7 @@ def mirror_image(image, labels, boxes, new_path):
 def change_scale(image, labels, boxes, new_path, scaling_array):
     for i in scaling_array:
         tmp_image = image.copy()
-        tmp_boxes = boxes.copy()
+        tmp_boxes = copy.deepcopy(boxes)
 
         h, w, _ = tmp_image.shape
         tmp_image = misc.imresize(tmp_image, i)
@@ -88,14 +83,32 @@ def change_scale(image, labels, boxes, new_path, scaling_array):
         offset_w = int((w-new_w) / 2)
         tmp_image = np.pad(tmp_image, ((offset_h, offset_h+(new_h%2)), (offset_w, offset_w+(new_w%2)), (0, 0)),
                            'constant', constant_values=255)
-        for j in range(tmp_boxes.shape[0]):
-            tmp_boxes[j][0] = (offset_w + (tmp_boxes[j][0] * new_w)) / float(w)
-            tmp_boxes[j][1] = (offset_h + (tmp_boxes[j][1] * new_h)) / float(h)
-            tmp_boxes[j][2] = tmp_boxes[j][2] * i
-            tmp_boxes[j][3] = tmp_boxes[j][3] * i
+        for bbox in tmp_boxes:
+            bbox.xmax = (offset_w + (bbox.xmax * new_w)) / float(w)
+            bbox.xmin = (offset_w + (bbox.xmin * new_w)) / float(w)
+            bbox.ymax = (offset_h + (bbox.ymax * new_h)) / float(h)
+            bbox.ymin = (offset_h + (bbox.ymin * new_h)) / float(h)
 
         tmp_path = new_path[0:(len(new_path)-4)] + "_s" + str(i).replace('.', '') + new_path[(len(new_path)-4):]
         save_image(tmp_image, labels, tmp_boxes, tmp_path)
+
+
+def rotate_image(image, mask, rotation):
+    tmp_image = image.copy()
+    tmp_mask = mask.copy()
+    random_degree = float(randint(0, rotation - 1) % 360)
+
+    tmp_image = ndimage.rotate(tmp_image, random_degree)
+    tmp_mask = ndimage.rotate(tmp_mask, random_degree)
+
+    bbox = utils.getBboxByMask(tmp_mask)
+
+    fgCut = tmp_image[bbox.ymin:bbox.ymax, bbox.xmin:bbox.xmax]
+    maskCut = tmp_mask[bbox.ymin:bbox.ymax, bbox.xmin:bbox.xmax]
+
+    h, w, _ = fgCut.shape()
+
+    return fgCut, maskCut, h, w
 
 
 # blurs the image
@@ -179,9 +192,6 @@ if __name__ == "__main__":
             new_path = file_path.replace(image_path, save_path)
 
             if label:
-                change_lighting(image, label, boxes, new_path, lighting_array)
-                mirror_image(image, label, boxes, new_path)
-                change_scale(image, label, boxes, new_path, scaling_array)
                 blur_image(image, label, boxes, new_path, blurring_array)
 
             # save image
