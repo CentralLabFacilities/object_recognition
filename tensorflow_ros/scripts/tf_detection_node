@@ -91,8 +91,8 @@ class TensorflowDetectionNode:
         r = rospy.Rate(1000.0)  # Not a problem to spin quickly
         while not rospy.is_shutdown():
             if not self._do_detection:
-                return {"detections": self._objectLocationList}
-
+                return {"objectLocationList": self._objectLocationList}
+        print self._objectLocationList
         # Return an empty result if rospy has been shutdown
         return {"detections": []}
 
@@ -110,11 +110,11 @@ class TensorflowDetectionNode:
             objectLocation = ObjectLocation()
             hypothesis = Hypothesis(label=self.detector.get_label(classes[i]), reliability=scores[i])
             roi = boxes[i]
-            objectLocation.hypotheses = hypothesis
-            objectLocation.bounding_box.y_offset = roi[0]
-            objectLocation.bounding_box.x_offset = roi[1]
-            objectLocation.bounding_box.height = roi[2]-roi[0]
-            objectLocation.bounding_box.width = roi[3]-roi[1]
+            objectLocation.hypotheses.append(hypothesis)
+            objectLocation.bounding_box.y_offset = int(roi[0]*self._size['height'])
+            objectLocation.bounding_box.x_offset = int(roi[1]*self._size['width'])
+            objectLocation.bounding_box.height = int((roi[2]-roi[0])*self._size['height'])
+            objectLocation.bounding_box.width = int((roi[3]-roi[1])*self._size['width'])
             self._objectLocationList.append(objectLocation)
 
         self._do_detection = False

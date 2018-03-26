@@ -70,9 +70,11 @@ class DetectPlugin(Plugin):
         Method that calls the DetectObjects.srv
         :param roi_image: Selected roi_image by the user
         """
+        print "srv callback"
         imageReq = self.bridge.cv2_to_imgmsg(image, "bgr8")
         try:
             result = self._srv(imageReq)
+            print "got result"
         except Exception as e:
             warning_dialog("Service Exception", str(e))
             return
@@ -87,7 +89,7 @@ class DetectPlugin(Plugin):
 
         #todo: service call to segmentation with result of depthLookup (use 1 objectShape)
         #self._srv_segment(depthLookupResult)
-        print ""
+        print depthLookupResult
 
     # TODO: replace with button callback
     def image_roi_callback(self, roi_image):
@@ -111,13 +113,13 @@ class DetectPlugin(Plugin):
         # display image with bounding boxes using opencv
         height, width, channels = image.shape
         for i in range(0, len(result)):
-            prob = result[i].hypotheses.reliability
-            label = result[i].hypotheses.label
+            prob = result[i].hypotheses[0].reliability
+            label = result[i].hypotheses[0].label
             bbox = result[i].bounding_box
-            cv2.rectangle(image, (int(bbox.x_offset * width), int(bbox.y_offset * height)),
-                          (int((bbox.x_offset + bbox.width) * width), int((bbox.y_offset + bbox.height) * height)), (0, 100, 200), 2)
+            cv2.rectangle(image, (int(bbox.x_offset), int(bbox.y_offset)),
+                          (int(bbox.x_offset + bbox.width), int(bbox.y_offset + bbox.height)), (0, 100, 200), 2)
             image_label = '%s %f' % (label, prob)
-            cv2.putText(image, image_label, (int(bbox.x_offset * width), int(bbox.y_offset* height)), 0, 0.4, (0, 0, 255), 1)
+            cv2.putText(image, image_label, (int(bbox.x_offset), int(bbox.y_offset)), 0, 0.4, (0, 0, 255), 1)
         cv2.imshow('image', image)
         cv2.waitKey(0)
 
