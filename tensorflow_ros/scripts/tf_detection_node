@@ -8,6 +8,8 @@ import sys
 # ROS
 import rospy
 
+from sensor_msgs.msg import Image
+
 # OpenCV
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
@@ -23,7 +25,7 @@ from tensorflow_ros import detector
 
 class TensorflowDetectionNode:
     """ Performs object detection using Tensorflow neural networks """
-    def __init__(self, graph_path, labels_path, save_images_folder,num_classes=99,detection_threshold=0.5):
+    def __init__(self, graph_path, labels_path, save_images_folder,num_classes=99,detection_threshold=0.5,image_topic="/pepper_robot/sink/front/image_raw"):
         """ Constructor
         :param graph_path: string with path + filename (incl. extension) indicating the database location
         :param labels_path: string with path + filename (incl. extension) indicating the location of the text file
@@ -53,6 +55,10 @@ class TensorflowDetectionNode:
         self._size = {'width': 0, 'height': 0}
         self._save_images_folder = save_images_folder
         self._bgr_image = None
+        self.cv_image = None
+
+        self._sub = rospy.Subscriber(image_topic, Image, self._image_callback)
+        rospy.loginfo("Listening to %s -- spinning .." % self._sub.name)
 
         rospy.loginfo("TensorflowDetectionNode initialized:")
         rospy.loginfo(" - graph_path=%s", graph_path)
@@ -65,6 +71,15 @@ class TensorflowDetectionNode:
         self.detector.load_graph(graph_path, labels_path)
         rospy.loginfo("detection graph successfully loaded")
 
+    def _image_callback(self, msg):
+        """
+        Sensor_msgs/Image callback
+        :param msg: The image message
+        """
+        try:
+            self.cv_image = self._bridge.imgmsg_to_cv2(msg, "bgr8")
+        except CvBridgeError as e:
+            rospy.logerr(e)
 
     def _detect_srv_callback(self, req):
         """ Callback function for the detection. It saves the image on a temporary location and sets _do_detection
@@ -76,9 +91,11 @@ class TensorflowDetectionNode:
         try:
             self._bgr_image = self._bridge.imgmsg_to_cv2(req.image, "bgr8")
         except CvBridgeError as e:
-            error_msg = "Could not convert to opencv image: %s" % e
-            rospy.logerr(error_msg)
-            raise Exception(error_msg)
+            #error_msg = "Could not convert to opencv image: %s" % e
+            #rospy.logerr(error_msg)
+            #raise Exception(error_msg)
+            print("no image in msg request, get one from rostopic")
+            self._bgr_image = self.cv_image
 
         # Write the image to file
         size = self._bgr_image.shape[:2]  # For now, we assume the entire image is the ROI
