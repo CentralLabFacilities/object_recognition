@@ -20,6 +20,7 @@ from image_recognition_util.objectset_utils import ObjectsetUtils
 flags = tf.app.flags
 flags.DEFINE_string('input_path', '', 'Path to the annotation files and images')
 flags.DEFINE_string('output_path', '', 'Path to output TFRecord')
+flags.DEFINE_string('default_config_path', '', 'Path to default config')
 FLAGS = flags.FLAGS
 
 def create_tf_example(labelpath,imagepath,label_map,num_classes,util):
@@ -82,6 +83,12 @@ def main(_):
     print("expecting {}/classNames.txt".format(path))
     label_map_output = "{}/labelMap.pbtxt".format(FLAGS.output_path)
     class_name_path = "{}/classNames.txt".format(path)
+    config_path = "{}/ssd.config".format(FLAGS.output_path)
+    default_config_path = FLAGS.default_config_path
+    # create output path if it doesnt exist
+    if not os.path.exists(FLAGS.output_path):
+        os.makedirs(FLAGS.output_path)
+
     with open(class_name_path) as f:
         content = f.readlines()
         content = [x.strip() for x in content]
@@ -127,7 +134,22 @@ def main(_):
     output_path = os.path.join(os.getcwd(), train_record_output)
     print('Successfully created the TFRecords: {}'.format(output_path))
 
-
+    # create ssd default config
+    default_config = open(default_config_path)
+    new_config = open(config_path,'w')
+    for line in default_config:
+        newline = line
+        if 'NUM_CLASSES' in line:
+            newline = line.replace('NUM_CLASSES', str(num_classes))
+        if 'TEST_LABEL' in line:
+            newline = line.replace('TEST_LABEL', label_map_output)
+        if 'TRAIN_LABEL' in line:
+            newline = line.replace('TRAIN_LABEL', label_map_output)
+        if 'TEST_RECORD' in line:
+            newline = line.replace('TEST_RECORD', test_record_output)
+        if 'TRAIN_RECORD' in line:
+            newline = line.replace('TRAIN_RECORD', train_record_output)
+        new_config.write(newline)
 
 if __name__ == '__main__':
   tf.app.run()
