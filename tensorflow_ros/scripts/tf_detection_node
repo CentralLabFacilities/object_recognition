@@ -147,6 +147,7 @@ if __name__ == '__main__':
         num_classes = rospy.get_param("~num_classes", 99)
         detection_threshold = rospy.get_param("~detection_threshold", 0.5)
         save_images = rospy.get_param("~save_images", True)
+        image_topic = rospy.get_param("~image_topic", "/pepper_robot/sink/front/image_raw")
 
         save_images_folder = None
         if save_images:
@@ -160,7 +161,8 @@ if __name__ == '__main__':
                                                labels_path=_labels_path,
                                                save_images_folder=save_images_folder,
                                                num_classes=num_classes,
-                                               detection_threshold=detection_threshold)
+                                               detection_threshold=detection_threshold,
+                                               image_topic=image_topic)
     # Start update loop
     r = rospy.Rate(100.0)
     while not rospy.is_shutdown():
