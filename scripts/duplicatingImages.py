@@ -46,7 +46,7 @@ def save_labels(labels_path, label, boxes):
 def save_image(image, labels, boxes, path):
     cv2.imwrite(path, image)
     train_txt.write(path + '\n')
-    utils.writeAnnotationFile(path.replace("/images/", "/labels/").replace(".jpg", ".txt"), labels, boxes, image)
+    utils.writeAnnotationFile(path.replace("/images/", "/labels/").replace(".jpg", ".txt"), labels, boxes, image, True)
 
 def show(img,time):
 	cv2.imshow('img', img)
@@ -113,8 +113,9 @@ def change_lighting(image, new_path, min, max):
 def mirror_image(image, bbox, new_path):
     tmp_image = cv2.flip(image,1)
     tmp_bbox = copy.deepcopy(bbox)
-    tmp_bbox.xmax = abs(bbox.xmax-1)
-    tmp_bbox.xmin = abs(bbox.xmin-1)
+    #swap xmin and xmax
+    tmp_bbox.xmax = abs(bbox.xmin-1)
+    tmp_bbox.xmin = abs(bbox.xmax-1)
     tmp_path = new_path[0:(len(new_path)-4)] + "_m" + new_path[(len(new_path)-4):]
     return tmp_image, tmp_path, tmp_bbox
 
@@ -188,9 +189,9 @@ if __name__ == "__main__":
     if not os.path.isdir(sys.argv[1]):
         print '\033[91m' + sys.argv[1] + ' is not a directory!' + '\033[0m'
         exit(1)
-    if not os.path.isdir(sys.argv[2]):
-        print '\033[91m' + sys.argv[2] + ' is not a directory!' + '\033[0m'
-        exit(1)
+    #if not os.path.isdir(sys.argv[2]):
+    #    print '\033[91m' + sys.argv[2] + ' is not a directory!' + '\033[0m'
+    #    exit(1)
     if not os.path.isdir(sys.argv[3]):
         print '\033[91m' + sys.argv[3] + ' is not a directory!' + '\033[0m'
         exit(1)
@@ -210,6 +211,10 @@ if __name__ == "__main__":
     image_path = sys.argv[1]
     save_path = sys.argv[2]
     bg_path = sys.argv[3]
+
+    print save_path
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
 
     bg_list = []
     for dirname, dirnames, filenames in os.walk(bg_path):
@@ -305,4 +310,5 @@ if __name__ == "__main__":
                                     b_img, b_path, b_box = mirror_image(b_img, s_box, b_path)
 
                                 #save
+                                print b_box
                                 save_image(b_img, label_list, [b_box], b_path)

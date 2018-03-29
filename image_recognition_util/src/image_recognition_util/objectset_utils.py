@@ -46,7 +46,7 @@ class ObjectsetUtils():
             annotatedList.append(a)
         return annotatedList
 
-    def writeAnnotationFile(self, labelpath, idList, boxList, image):
+    def writeAnnotationFile(self, labelpath, idList, boxList, image, normalized):
         if not (len(idList) == len(boxList)):
             print("error: list size mismatch (idList: {}, boxList: {}".format(len(idList),len(boxList)))
             return
@@ -56,7 +56,11 @@ class ObjectsetUtils():
             id = idList[i]
 
             # convert bbox for darknet format
-            h, w = image.shape[:2]
+            if normalized:
+                h = 1
+                w = 1
+            else:
+                h, w = image.shape[:2]
             bb = self.convert((w, h), bbox)
 
             # write converted bbox as label in label_dir
