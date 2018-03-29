@@ -19,6 +19,7 @@ from object_detection.utils import label_map_util
 from object_tracking_msgs.msg import CategoryProbability
 from tensorflow_ros import detector
 from tensorflow_ros import recognizer
+import datetime
 
 
 flags = tf.app.flags
@@ -36,7 +37,7 @@ FLAGS = flags.FLAGS
 
 
 class EvaluateNet:
-    def __init__(self, threshold=0.5):
+    def __init__(self, threshold):
         # variables
         self.threshold = threshold
         self.total_correct = 0
@@ -47,9 +48,12 @@ class EvaluateNet:
         self.index = 0
         self.log_str = ""
 
-        self._filename = "/tmp/rec_image.png"
+        self._filepath = "/tmp/rec_image"
+        if not os.path.exists(self._filepath):
+            os.makedirs(self._filepath)
 
         # objects
+        print("initialize detector with threshold {}".format(threshold))
         self.detector = detector.Detector(detection_threshold=self.threshold)
         self.recognizer = recognizer.Recognizer()
         self.util = ObjectsetUtils()
@@ -109,14 +113,15 @@ class EvaluateNet:
             ymin = int(boxes[i][0] * height)
             ymax = int(boxes[i][2] * height)
             roi = cvImage[ymin:ymax, xmin:xmax]
-            print("{}-{}, {}-{}".format(xmin,xmax,ymin,ymax))
             if (abs(ymin-ymax) <= 0 or abs(xmin-xmax) <= 0):
-                print "error: roi size is 0"
+                print "ERROR: roi size is 0"
                 return None
             #TODO: directly from memory
-            cv2.imwrite(filename=self._filename, img=roi)
+            imgpath = "{}/img{}.jpg".format(self._filepath,datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S_%f"))
+            print imgpath
+            cv2.imwrite(filename=imgpath, img=roi)
             #recognize
-            sorted_result = self.recognizer.recognize(self._filename)
+            sorted_result = self.recognizer.recognize(imgpath)
             if sorted_result:
                 best_label = sorted_result[-1][0]
                 best_prob = sorted_result[-1][1]
