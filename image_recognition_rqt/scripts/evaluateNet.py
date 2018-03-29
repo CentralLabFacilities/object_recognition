@@ -109,6 +109,10 @@ class EvaluateNet:
             ymin = int(boxes[i][0] * height)
             ymax = int(boxes[i][2] * height)
             roi = cvImage[ymin:ymax, xmin:xmax]
+            print("{}-{}, {}-{}".format(xmin,xmax,ymin,ymax))
+            if (abs(ymin-ymax) >= 0 or abs(xmin-xmax) >= 0):
+                print "error: roi size is 0"
+                return None
             #TODO: directly from memory
             cv2.imwrite(filename=self._filename, img=roi)
             #recognize
@@ -140,8 +144,13 @@ class EvaluateNet:
         to_find = len(annotatedList)
         if doRecognition:
             detectedList = self.detectAndRecognize(cvImage)
+
         else:
             detectedList = self.detect(cvImage)
+
+        if (detectedList == None):
+            return 0,0,0,0,cvImage
+
         correct, wrong, unkown_detected, image = evaluate.evaluateDetection(annotatedList, detectedList, self.threshold, cvImage)
         return correct, wrong, unkown_detected, to_find, image
 
@@ -162,6 +171,7 @@ class EvaluateNet:
                         self.total_unkown_detected = self.total_unkown_detected + unkown_detected
                         self.total_images = self.total_images + 1
                         self.total_to_find = self.total_to_find + to_find
+
                         if saveImages:
                             save_filename = '{}/eval_image{}.jpg'.format(logdir, index)
                             cv2.imwrite(save_filename, image)
