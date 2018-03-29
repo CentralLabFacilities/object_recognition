@@ -110,7 +110,7 @@ class EvaluateNet:
             ymax = int(boxes[i][2] * height)
             roi = cvImage[ymin:ymax, xmin:xmax]
             print("{}-{}, {}-{}".format(xmin,xmax,ymin,ymax))
-            if (abs(ymin-ymax) >= 0 or abs(xmin-xmax) >= 0):
+            if (abs(ymin-ymax) <= 0 or abs(xmin-xmax) <= 0):
                 print "error: roi size is 0"
                 return None
             #TODO: directly from memory
