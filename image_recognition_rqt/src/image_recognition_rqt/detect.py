@@ -22,6 +22,8 @@ _SUPPORTED_SERVICES = ["object_tracking_msgs/DetectObjects"]
 
 from tf_detector import TfDetector
 
+import uuid
+
 
 class DetectPlugin(Plugin):
     def __init__(self, context):
@@ -85,14 +87,22 @@ class DetectPlugin(Plugin):
 
 
     def triggerSegmentation(self,detectionResult):
-
+        #set uuid
+        for obj in detectionResult:
+            obj_uuid = uuid.uuid4()
+            print(obj_uuid)
+            obj.name = str(obj_uuid)
         print("do depth lookup")
         depthLookupResult = self._srv_depthLookup(detectionResult)
 
         #todo: service call to segmentation with result of depthLookup (use 1 objectShape)
         print depthLookupResult
         print("do segmentation for each objectShape")
-        self._srv_segment(depthLookupResult.objectShapeList)
+        try:
+            self._srv_segment(depthLookupResult.objectShapeList)
+        except Exception as e:
+            warning_dialog("Service exception", str(e))
+            return
 
     # TODO: replace with button callback
     def image_roi_callback(self, roi_image):

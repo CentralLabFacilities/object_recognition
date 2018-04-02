@@ -130,6 +130,8 @@ class EvaluateNet:
             if best_prob > best.probability:
                 best.label = best_label
                 best.probability = best_prob
+            # print old and new label
+            print("d: {} -> r: {}".format(self.detector.get_label(classes[i]),best.label))
             # get label with highest probability
             #for p in r.categorical_distribution.probabilities:
             #    if p.probability > best.probability:

@@ -45,7 +45,8 @@ def save_labels(labels_path, label, boxes):
 # save image and label file to the new location
 def save_image(image, labels, boxes, path):
     cv2.imwrite(path, image)
-    train_txt.write(path + '\n')
+    if(train_txt):
+        train_txt.write(path + '\n')
     utils.writeAnnotationFile(path.replace("/images/", "/labels/").replace(".jpg", ".txt"), labels, boxes, image, True)
 
 def show(img,time):
@@ -221,8 +222,9 @@ if __name__ == "__main__":
         for filename in filenames:
             file = dirname + '/' + filename
             if file.endswith(".jpg"):
-                if not (os.path.isfile(file.replace("/images/", "/labels/").replace(".jpg", ".txt"))):
-                    print("error: Label file does not exist! Skipping image.")
+                l_file = file.replace("/images/", "/labels/").replace(".jpg", ".txt")
+                if not (os.path.isfile(l_file)):
+                    print("error: Surface label file does not exist! Skipping image.")
                     continue
                 bg_list.append("{}".format(file))
 
@@ -267,10 +269,14 @@ if __name__ == "__main__":
                     new_file.close()
                 continue
 
+            print(file_path)
+
             label_list = False
             box_list = False
-            if "mask" in file_path: # ignore masks
+            if "mask.jpg" in file_path: # ignore masks
                 continue
+
+            print("duplicate image {}".format(file_path))
 
             label_path = file_path.replace("/images/", "/labels/").replace(".jpg", ".txt")
             mask_path = file_path.replace(".jpg", "_mask.jpg")

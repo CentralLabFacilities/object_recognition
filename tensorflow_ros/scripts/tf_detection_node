@@ -94,11 +94,9 @@ class TensorflowDetectionNode:
             #error_msg = "Could not convert to opencv image: %s" % e
             #rospy.logerr(error_msg)
             #raise Exception(error_msg)
-            print("no image in msg request, get one from rostopic")
+            print("No image in request. Get image from rostopic.")
             self._bgr_image = self.cv_image
-
-        # Write the image to file
-        size = self._bgr_image.shape[:2]  # For now, we assume the entire image is the ROI
+        size = self._bgr_image.shape[:2]
         self._size['height'] = size[0]
         self._size['width'] = size[1]
         self._objectLocationList = []
