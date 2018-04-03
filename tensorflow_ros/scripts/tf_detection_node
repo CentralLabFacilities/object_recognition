@@ -16,16 +16,21 @@ import cv2
 
 import numpy as np
 
+import datetime
+import uuid
+
 # object recognition
 import object_tracking_msgs
 from object_tracking_msgs.srv import DetectObjects
 from object_tracking_msgs.msg import ObjectLocation, Hypothesis
+from object_tracking_msgs.msg import CategoryProbability
 from image_recognition_util import image_writer_test_gui
 from tensorflow_ros import detector
+from tensorflow_ros import recognizer
 
 class TensorflowDetectionNode:
     """ Performs object detection using Tensorflow neural networks """
-    def __init__(self, graph_path, labels_path, save_images_folder,num_classes=99,detection_threshold=0.5,image_topic="/pepper_robot/sink/front/image_raw"):
+    def __init__(self, graph_path, labels_path, rec_path, save_images_folder,num_classes=99,detection_threshold=0.5,image_topic="/pepper_robot/sink/front/image_raw"):
         """ Constructor
         :param graph_path: string with path + filename (incl. extension) indicating the database location
         :param labels_path: string with path + filename (incl. extension) indicating the location of the text file
@@ -42,8 +47,12 @@ class TensorflowDetectionNode:
             err_msg = "invalid number of classes".format(num_classes)
             rospy.logerr(err_msg)
             sys.exit(err_msg)
+
+        self._unknown_prob = 0.1
+
         #init detector
         self.detector = detector.Detector(num_classes, detection_threshold)
+        self.recognizer = recognizer.Recognizer()
 
         self._objectLocationList = []  # List with Detections s
         self._bridge = CvBridge()
@@ -57,6 +66,10 @@ class TensorflowDetectionNode:
         self._bgr_image = None
         self.cv_image = None
 
+        self.roi_path = "/tmp/"
+        graph_r = rec_path + "/output_graph.pb"
+        labels_r = rec_path + "/output_labels.txt"
+
         self._sub = rospy.Subscriber(image_topic, Image, self._image_callback)
         rospy.loginfo("Listening to %s -- spinning .." % self._sub.name)
 
@@ -66,10 +79,15 @@ class TensorflowDetectionNode:
         rospy.loginfo(" - save_images_folder=%s", save_images_folder)
         rospy.loginfo(" - num_classes=%s", num_classes)
         rospy.loginfo(" - detection_threshold=%s", detection_threshold)
+        rospy.loginfo(" - rec_graph=%s",graph_r)
+        rospy.loginfo(" - rec_labels=%s",labels_r)
 
         """1. Load graph from saved GraphDef file """
         self.detector.load_graph(graph_path, labels_path)
         rospy.loginfo("detection graph successfully loaded")
+
+        self.recognizer.load_graph(graph_r, labels_r)
+        rospy.loginfo("recognition graph successfully loaded")
 
     def _image_callback(self, msg):
         """
@@ -118,12 +136,48 @@ class TensorflowDetectionNode:
         if not self._do_detection:
             return
 
+        # detection
         classes, scores, boxes = self.detector.detect(self._bgr_image)
+        height, width, _ = self._bgr_image.shape
+
+        # recognition based on bboxes
+        labels = []
+        for i in range(0,len(classes)):
+            xmin = int(boxes[i][1] * width)
+            xmax = int(boxes[i][3] * width)
+            ymin = int(boxes[i][0] * height)
+            ymax = int(boxes[i][2] * height)
+            roi = self._bgr_image[ymin:ymax, xmin:xmax]
+            if (abs(ymin-ymax) <= 0 or abs(xmin-xmax) <= 0):
+                print "ERROR: roi size is 0"
+            #TODO: directly from memory
+            imgpath = "{}/img{}.jpg".format(self.roi_path, datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S_%f"))
+            cv2.imwrite(filename=imgpath, img=roi)
+            #recognize
+            sorted_result = self.recognizer.recognize(imgpath)
+            if sorted_result:
+                best_label = sorted_result[-1][0]
+                best_prob = sorted_result[-1][1]
+            #TODO: unknown probability hardcoded
+            best = CategoryProbability(label="unknown", probability=self._unknown_prob)
+            if best_prob > best.probability:
+                best.label = best_label
+                best.probability = best_prob
+            labels.append(best.label)
+            scores[i] = best.probability
 
         # add results
         for i in range(0,len(classes)):
+            if (labels[i] == "unkown"):
+                print "unknown object"
+            if (labels [i] == "reject"):
+                continue
+
             objectLocation = ObjectLocation()
-            hypothesis = Hypothesis(label=self.detector.get_label(classes[i]), reliability=scores[i])
+            # set uuid
+            obj_uuid = uuid.uuid4()
+            objectLocation.name = str(obj_uuid)
+            hypothesis = Hypothesis(label=labels[i], reliability=scores[i])
             roi = boxes[i]
             objectLocation.hypotheses.append(hypothesis)
             objectLocation.bounding_box.y_offset = int(roi[0]*self._size['height'])
@@ -146,6 +200,7 @@ if __name__ == '__main__':
         detection_threshold = rospy.get_param("~detection_threshold", 0.5)
         save_images = rospy.get_param("~save_images", True)
         image_topic = rospy.get_param("~image_topic", "/pepper_robot/sink/front/image_raw")
+        _rec_path = os.path.expanduser(rospy.get_param("~rec_path"))
 
         save_images_folder = None
         if save_images:
@@ -157,6 +212,7 @@ if __name__ == '__main__':
     # Create object
     object_detection = TensorflowDetectionNode(graph_path=_graph_path,
                                                labels_path=_labels_path,
+                                               rec_path=_rec_path,
                                                save_images_folder=save_images_folder,
                                                num_classes=num_classes,
                                                detection_threshold=detection_threshold,
