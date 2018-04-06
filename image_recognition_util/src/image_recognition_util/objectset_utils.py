@@ -155,7 +155,12 @@ class ObjectsetUtils():
         return labelList
 
     def getBboxByMask(self,mask):
-        mask, contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        version_number = int(cv2.__version__[0])  # check opencv version
+        contours = 0
+        if version_number > 2:
+            mask, contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        else:
+            contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         largest_area = 0
         largest_contour_index = 0
         for i in range(len(contours)):
