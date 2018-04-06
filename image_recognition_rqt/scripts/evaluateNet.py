@@ -13,8 +13,6 @@ from image_recognition_util import evaluate
 from image_recognition_util.object import Object
 from image_recognition_util.object import BoundingBox
 from image_recognition_util.objectset_utils import ObjectsetUtils
-from object_detection.utils import dataset_util
-from object_detection.utils import label_map_util
 from object_tracking_msgs.msg import CategoryProbability
 from tensorflow_ros import detector
 from tensorflow_ros import recognizer
@@ -57,29 +55,6 @@ class EvaluateNet:
         self.recognizer = recognizer.Recognizer()
         self.util = ObjectsetUtils()
 
-
-    def readAnnotated(self, labelpath, label_map, num_classes):
-        annotatedList = []
-        # "label" is the id
-        labelList = self.util.getLabelList(labelpath)
-        bboxList = self.util.getRoiList(labelpath)
-
-        # get label
-        categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=num_classes,
-                                                                    use_display_name=True)
-        for i in range(0, len(labelList)):
-            label = labelList[i]
-            xmin = bboxList[i].xmin
-            xmax = bboxList[i].xmax
-            ymin = bboxList[i].ymin
-            ymax = bboxList[i].ymax
-            category_index = label_map_util.create_category_index(categories)
-            id = int(label) + 1
-            class_text = category_index[id]['name']
-
-            a = Object(class_text, 1.0, xmin, xmax, ymin, ymax)
-            annotatedList.append(a)
-        return annotatedList
 
 
     def detect(self, cvImage):
@@ -144,9 +119,9 @@ class EvaluateNet:
         return detections
 
 
-    def evaluateImage(self, labelpath, imagepath, label_map, num_classes, doRecognition=True):
+    def evaluateImage(self, labelpath, imagepath, label_map_path, num_classes, doRecognition=True):
         cvImage = cv2.imread(imagepath, 3)
-        annotatedList = self.readAnnotated(labelpath, label_map, num_classes)
+        annotatedList = self.util.readAnnotated(labelpath, label_map_path, num_classes)
         to_find = len(annotatedList)
         if doRecognition:
             detectedList = self.detectAndRecognize(cvImage)
@@ -161,7 +136,7 @@ class EvaluateNet:
         return correct, wrong, unkown_detected, to_find, image
 
 
-    def evaluateGraphs(self, path, label_map, num_classes, doRecognition=True, saveImages=True):
+    def evaluateGraphs(self, path, label_map_path, num_classes, doRecognition=True, saveImages=True):
         index = 0
         for dirname, dirnames, filenames in os.walk(path):
             for filename in filenames:
@@ -170,7 +145,7 @@ class EvaluateNet:
                     imagepath = "{}/images/{}.jpg".format(dirname[:-7], filename[:-4])
 
                     if (os.path.isfile(imagepath)):
-                        correct, wrong, unkown_detected, to_find, image = self.evaluateImage(labelpath, imagepath, label_map,
+                        correct, wrong, unkown_detected, to_find, image = self.evaluateImage(labelpath, imagepath, label_map_path,
                                                                                         num_classes, doRecognition)
                         self.total_correct = self.total_correct + correct
                         self.total_wrong = self.total_wrong + wrong
@@ -273,7 +248,7 @@ if __name__ == "__main__":
     threshold = FLAGS.threshold
 
     # load label map for testset
-    label_map = label_map_util.load_labelmap(testset+"/labelMap.pbtxt")
+    label_map_path = testset+"/labelMap.pbtxt"
 
     # print settings
     print("save eval images and logs in {}".format(logdir))
@@ -296,7 +271,7 @@ if __name__ == "__main__":
 
                 print ("evaluate graph: {}".format(filepath))
                 eval.detector.load_graph(filepath, label_map_d)
-                eval.evaluateGraphs(testset, label_map, num_classes, doRecognition, save_images)
+                eval.evaluateGraphs(testset, label_map_path, num_classes, doRecognition, save_images)
                 eval.printAndLog(filepath, logdir)
 
     #eval.detector.load_graph(graph_d,label_map_d)

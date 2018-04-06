@@ -3,7 +3,6 @@ import sys
 import cv2
 from image_recognition_util.object import Object
 from image_recognition_util.object import BoundingBox
-from object_detection.utils import label_map_util
 
 class ObjectsetUtils():
 
@@ -23,24 +22,36 @@ class ObjectsetUtils():
         h = h * dh
         return (x, y, w, h)
 
-    def readAnnotated(self, labelpath, label_map, num_classes):
+    def getLabelMap(self, label_map_path):
+        # get content of the label map
+        with open(label_map_path) as f:
+            content = f.readlines()
+        content = [x.strip() for x in content]
+
+        dict_labels = {}
+
+        for i in range(0, (len(content) / 5)):
+            label = int(content[(i * 5) + 2][-1:])
+            s = content[(i * 5) + 3]
+            label_text = s[s.index('\"') + 1:s.rindex('\"')]
+            dict_labels[label] = label_text
+
+        return dict_labels
+
+    def readAnnotated(self, labelpath, label_map_path, num_classes):
         annotatedList = []
         # "label" is the id
         labelList = self.getLabelList(labelpath)
         bboxList = self.getRoiList(labelpath)
+        dictLabelMap = self.getLabelMap(label_map_path)
 
-        # get label
-        categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=num_classes,
-                                                                    use_display_name=True)
         for i in range(0, len(labelList)):
             label = labelList[i]
             xmin = bboxList[i].xmin
             xmax = bboxList[i].xmax
             ymin = bboxList[i].ymin
             ymax = bboxList[i].ymax
-            category_index = label_map_util.create_category_index(categories)
-            id = int(label) + 1
-            class_text = category_index[id]['name']
+            class_text = dictLabelMap[int(label)+1]
 
             a = Object(class_text, 1.0, xmin, xmax, ymin, ymax)
             annotatedList.append(a)
