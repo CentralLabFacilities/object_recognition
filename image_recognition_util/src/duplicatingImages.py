@@ -12,6 +12,8 @@ from scipy import ndimage
 import random
 from random import randint
 
+import time
+
 from image_recognition_util.objectset_utils import ObjectsetUtils
 from image_recognition_util.objectset_utils import BoundingBox
 
@@ -65,7 +67,7 @@ def getRandomPositionOnSurface(w, h, bgAnnotationList):
     limitUp = max(h, surfaceBox.ymin)
 
     if (limitRight < limitLeft or limitUp > limitDown):
-        print("Surface too small to place roi.")
+        #print("Surface too small to place roi.")
         return None
 
     bboxRand = BoundingBox(0, 0, 0, 0)
@@ -81,14 +83,18 @@ def getRandomPositionOnSurface(w, h, bgAnnotationList):
     return bboxRand
 
 def placeRoiOnBackground(fgCut, maskCut, bg, bbox, new_path, bg_index):
-
+    log = "place roi at: {}\n".format(bbox)
     # cut out object and background based on mask inside the roi
-    maskInv = cv2.bitwise_not(maskCut)
-    fg = cv2.bitwise_and(fgCut, fgCut, mask=maskCut)
     try:
+        maskInv = cv2.bitwise_not(maskCut)
+        log = log + "fgcut: {} - mask: {}\n".format(fgCut.shape, maskCut.shape)
+        fg = cv2.bitwise_and(fgCut, fgCut, mask=maskCut)
         bgCut = bg[bbox.ymin:bbox.ymax, bbox.xmin:bbox.xmax]
+        log = log + "bgcut: {} - mask: {}\n".format(bgCut.shape, maskInv.shape)
         bgCut = cv2.bitwise_and(bgCut, bgCut, mask=maskInv)
         roi = bgCut + fg
+        roi_h, roi_w, _ = roi.shape
+        log = log + "roi size: {},{}\n".format(roi_w,roi_h)
         # insert roi in large image
         h, w, c = bg.shape
         new = np.zeros((h, w, c), np.uint8)
@@ -97,7 +103,9 @@ def placeRoiOnBackground(fgCut, maskCut, bg, bbox, new_path, bg_index):
         tmp_path = new_path[0:(len(new_path) - 4)] + "_bg" + str(bg_index).replace('.', '') + new_path[(len(new_path) - 4):]
         return new, tmp_path
     except:
-        print("exception with mask-shape: {} and bg-shape: {}".format(maskCut.shape, bgCut.shape))
+        print("exception in place RoiOnBackground")
+        print("log: \n{}".format(log))
+
 
 
 # change the brightness of the image with the factors in the lightning array
@@ -150,19 +158,16 @@ def rotate_image(image, mask, rotation, new_path):
 
     tmp_image = ndimage.rotate(tmp_image, random_degree)
     tmp_mask = ndimage.rotate(tmp_mask, random_degree)
-
     bbox = utils.getBboxByMask(tmp_mask)
 
     fg_cut = tmp_image[bbox.ymin:bbox.ymax, bbox.xmin:bbox.xmax]
     mask_cut = tmp_mask[bbox.ymin:bbox.ymax, bbox.xmin:bbox.xmax]
-
     # set all values to 255 or 0
     for (x, y), value in np.ndenumerate(mask_cut):
         if mask_cut[x][y] > 200:
             mask_cut[x][y] = 255
         else:
             mask_cut[x][y] = 0
-
     h, w, _ = fg_cut.shape
 
     tmp_path = new_path[0:(len(new_path) - 4)] + "_r" + str(random_degree).replace('.0', '') + new_path[(len(new_path) - 4):]
@@ -195,23 +200,24 @@ if __name__ == "__main__":
     #    exit(1)
     if not os.path.isdir(sys.argv[3]):
         print '\033[91m' + sys.argv[3] + ' is not a directory!' + '\033[0m'
-        exit(1)
-    if '[' not in sys.argv[4] and ']' not in sys.argv[4]:
-        print '\033[91m' + sys.argv[4] + ' is not a lighting array like [0.2,0.5,1.5]' + '\033[0m'
-        exit(1)
-    if '[' not in sys.argv[5] and ']' not in sys.argv[5]:
-        print '\033[91m' + sys.argv[5] + ' is not a scaling array like [0.3,0.7]' + '\033[0m'
-        exit(1)
-    if '[' not in sys.argv[6] and ']' not in sys.argv[6]:
-        print '\033[91m' + sys.argv[6] + ' is not a blurring array like [4,8,15]' + '\033[0m'
-        exit(1)
-    if '[' not in sys.argv[7] and ']' not in sys.argv[7]:
-        print '\033[91m' + sys.argv[7] + ' is not a rotation array like [min,max]' + '\033[0m'
-        exit(1)
 
     image_path = sys.argv[1]
     save_path = sys.argv[2]
     bg_path = sys.argv[3]
+
+    num_light = int(sys.argv[4])
+    if (num_light == 0):
+        num_light = 2
+    num_scale = int(sys.argv[5])
+    if (num_scale == 0):
+        num_scale = 2
+    num_blur = int(sys.argv[6])
+    if (num_blur == 0):
+        num_blur = 2
+    num_rotate = int(sys.argv[7])
+    if (num_rotate == 0):
+        num_rotate = 2
+    print("change image (light, scale, blur, rotate): {}x{}x{}x{} times".format(num_light, num_scale, num_blur, num_rotate))
 
     print save_path
     if not os.path.exists(save_path):
@@ -227,18 +233,6 @@ if __name__ == "__main__":
                     print("error: Surface label file does not exist! Skipping image.")
                     continue
                 bg_list.append("{}".format(file))
-
-    lighting_array = [float(x) for x in sys.argv[4][1:len(sys.argv[4]) - 1].split(',')]
-    print "lightning array: " + str(lighting_array)
-
-    scaling_array = [float(x) for x in sys.argv[5][1:len(sys.argv[5]) - 1].split(',')]
-    print "scaling array: " + str(scaling_array)
-
-    blurring_array = [int(x) for x in sys.argv[6][1:len(sys.argv[6]) - 1].split(',')]
-    print "blurring array: " + str(blurring_array)
-
-    rotation_array = [int(x) for x in sys.argv[7][1:len(sys.argv[7]) - 1].split(',')]
-    print "rotation array: " + str(rotation_array)
 
     # rotation hardcoded
     rotation = 360
@@ -269,14 +263,14 @@ if __name__ == "__main__":
                     new_file.close()
                 continue
 
-            print(file_path)
 
             label_list = False
             box_list = False
             if "mask.jpg" in file_path: # ignore masks
                 continue
 
-            print("duplicate image {}".format(file_path))
+            print(file_path)
+            start = time.time()
 
             label_path = file_path.replace("/images/", "/labels/").replace(".jpg", ".txt")
             mask_path = file_path.replace(".jpg", "_mask.jpg")
@@ -288,8 +282,17 @@ if __name__ == "__main__":
             label_list, box_list = read_labels(label_path) # necessary?
             new_path = file_path.replace(image_path, save_path)
 
-            for i in range(0,2):
+            for i in range(0,num_rotate):
                 fg_cut, mask_cut, h_cut, w_cut, rot_path = rotate_image(image, mask, rotation, new_path)
+                # check if mask and img have the same size, otherwise retry
+                fh, fw, _ = fg_cut.shape
+                mh, mw = mask_cut.shape
+                while not (mh == fh and mw == fw):
+                    print("fg_cut and mask_cut have different shapes! Try again.")
+                    fg_cut, mask_cut, h_cut, w_cut, rot_path = rotate_image(image, mask, rotation, new_path)
+                    # check if mask and img have the same size
+                    fh, fw, _ = fg_cut.shape
+                    mh, mw = mask_cut.shape
 
                 for i in range(0,len(bg_list)):
                     bg_file = bg_list[i]
@@ -304,11 +307,11 @@ if __name__ == "__main__":
                         continue
                     bg_img, bg_path = placeRoiOnBackground(fg_cut, mask_cut, bg, bbox_rand, rot_path, i)
                     norm_box = utils.getNormalizedRoiCoordinates(bbox_rand, w, h)
-                    for i in range(0,2):
+                    for i in range(0,num_light):
                         l_img, l_path = change_lighting(bg_img, bg_path, 0.2, 1.7)
-                        for i in range(0, 3):
+                        for i in range(0, num_scale):
                             s_img, s_path, s_box = change_scale(l_img, norm_box, l_path, 0.3, 1.0)
-                            for i in range(0, 2):
+                            for i in range(0, num_blur):
                                 b_img, b_path = blur_image(s_img, s_path, 1, 4)
 
                                 b_box = s_box
@@ -316,5 +319,7 @@ if __name__ == "__main__":
                                     b_img, b_path, b_box = mirror_image(b_img, s_box, b_path)
 
                                 #save
-                                print b_box
                                 save_image(b_img, label_list, [b_box], b_path)
+
+            end = time.time()
+            print("time: {}".format(end - start))
