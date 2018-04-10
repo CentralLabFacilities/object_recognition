@@ -160,7 +160,9 @@ class ObjectsetUtils():
         if version_number > 2:
             mask, contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         else:
-            contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            # this doesnt work for some reason (mask is just black)
+            mask_cpy = mask.copy()
+            contours, hierarchy = cv2.findContours(mask_cpy, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         largest_area = 0
         largest_contour_index = 0
         for i in range(len(contours)):

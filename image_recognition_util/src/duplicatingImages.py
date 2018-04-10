@@ -50,6 +50,13 @@ def save_image(image, labels, boxes, path):
     if(train_txt):
         train_txt.write(path + '\n')
     utils.writeAnnotationFile(path.replace("/images/", "/labels/").replace(".jpg", ".txt"), labels, boxes, image, True)
+    #save roi images too
+    for i in range(0,len(boxes)):
+        h, w, _ = image.shape
+        bbox = utils.getAbsoluteRoiCoordinates(boxes[i],w,h)
+        roi = image[bbox.ymin:bbox.ymax, bbox.xmin:bbox.xmax]
+        roi_path = path.replace("/images/", "/rois/").replace(".jpg", "._{}.jpg".format(i))
+        cv2.imwrite(roi_path, roi)
 
 def show(img,time):
 	cv2.imshow('img', img)
@@ -243,6 +250,9 @@ if __name__ == "__main__":
 
             if not os.path.exists(dirname.replace(image_path, save_path)):  # creates dir path
                 os.makedirs(dirname.replace(image_path, save_path))
+            roi_path = dirname.replace(image_path, save_path).replace("/images", "/rois").replace("/labels", "/rois")
+            if not os.path.exists(roi_path):
+                os.makedirs(roi_path)
 
             # deals with all None-Image files
             if (imghdr.what(file_path) == None):
