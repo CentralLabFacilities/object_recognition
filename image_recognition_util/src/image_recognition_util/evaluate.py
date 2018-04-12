@@ -1,14 +1,18 @@
 import cv2
+import os
+import datetime
 
 #max distance of bounding box coordinated in pixel
 maxDistX = 1.0
 maxDistY = 1.0
 
 
-def evaluateDetection(annotatedList, detectedList, threshold, image):
+def evaluateDetection(annotatedList, detectedList, threshold, image, savepath):
     num_correct = 0           # correct detected and recognized objects
     num_wrong = 0             # correct detected but wrong recognized objects
     num_wrong_detected = 0    # wrong detected objects
+
+    img_cpy = image.copy()
 
     # draw annotated bboxes with color: black
     color = (0, 0, 0)
@@ -21,6 +25,7 @@ def evaluateDetection(annotatedList, detectedList, threshold, image):
         correct_recognized = False
         correct_detected = False  # false if none or to many annotations fit
         double_detected = False   # check if a better detection exist
+        savelabel = "unknown"
 
         # check whether the object is correct detected and/or labeled
         for annotated in annotatedList:
@@ -28,6 +33,7 @@ def evaluateDetection(annotatedList, detectedList, threshold, image):
                 correct_detected += 1
                 if (detected.label == annotated.label):
                     correct_recognized = True
+                    savelabel = annotated.label
 
         # check if a better detection exist so it can be ignored
         for other_detected in detectedList:
@@ -50,9 +56,25 @@ def evaluateDetection(annotatedList, detectedList, threshold, image):
             num_wrong_detected += 1
             color = (255, 0, 0)  # blue but why?
 
+        #save roi for recognition retraining
+        roi = getRoi(img_cpy, detected)
+        saveRoiImage(savepath, savelabel, roi)
+        #draw bounding box
         drawBbox(color, image, detected)
 
     return num_correct, num_wrong, num_wrong_detected, image
+
+def saveRoiImage(savepath, label, image):
+    imgfile = savepath + '/' + label
+    if not os.path.exists(imgfile):
+        os.makedirs(imgfile)
+    imgfile = imgfile + '/' + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S_%f") + '.jpg'
+    cv2.imwrite(imgfile, image)
+
+def getRoi(image, detected):
+    height, width, _ = image.shape
+    roi = image[int(detected.bbox.ymin*height):int(detected.bbox.ymax*height), int(detected.bbox.xmin*width):int(detected.bbox.xmax*width)]
+    return roi
 
 
 def doubleTest(detected, other_detected):

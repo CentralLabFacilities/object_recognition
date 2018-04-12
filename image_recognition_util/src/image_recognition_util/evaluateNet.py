@@ -9,10 +9,9 @@ import os
 import tensorflow as tf
 
 # object rec
-from image_recognition_util import evaluate
-from image_recognition_util.object import Object
-from image_recognition_util.object import BoundingBox
-from image_recognition_util.objectset_utils import ObjectsetUtils
+import evaluate
+from object import Object
+from objectset_utils import ObjectsetUtils
 from object_tracking_msgs.msg import CategoryProbability
 from tensorflow_ros import detector
 from tensorflow_ros import recognizer
@@ -44,10 +43,6 @@ class EvaluateNet:
         self.total_to_find = 0
         self.index = 0
         self.log_str = ""
-
-        self._filepath = "/tmp/rec_image"
-        if not os.path.exists(self._filepath):
-            os.makedirs(self._filepath)
 
         # objects
         print("initialize detector with threshold {}".format(threshold))
@@ -91,8 +86,9 @@ class EvaluateNet:
                 print "ERROR: roi size is 0"
                 return None
             #TODO: directly from memory
-            imgpath = "{}/img{}.jpg".format(self._filepath,datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S_%f"))
-            print imgpath
+            #imgpath = "{}/img{}.jpg".format(self._filepath,datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S_%f"))
+            #print imgpath
+            imgpath = "/tmp/rec_img.jpg"
             cv2.imwrite(filename=imgpath, img=roi)
             #recognize
             sorted_result = self.recognizer.recognize(imgpath)
@@ -119,7 +115,7 @@ class EvaluateNet:
         return detections
 
 
-    def evaluateImage(self, labelpath, imagepath, label_map_path, num_classes, doRecognition=True):
+    def evaluateImage(self, labelpath, imagepath, label_map_path, num_classes, savepath, doRecognition=True):
         cvImage = cv2.imread(imagepath, 3)
         annotatedList = self.util.readAnnotated(labelpath, label_map_path, num_classes)
         to_find = len(annotatedList)
@@ -132,11 +128,11 @@ class EvaluateNet:
         if (detectedList == None):
             return 0,0,0,0,cvImage
 
-        correct, wrong, unkown_detected, image = evaluate.evaluateDetection(annotatedList, detectedList, self.threshold, cvImage)
+        correct, wrong, unkown_detected, image = evaluate.evaluateDetection(annotatedList, detectedList, self.threshold, cvImage, savepath)
         return correct, wrong, unkown_detected, to_find, image
 
 
-    def evaluateGraphs(self, path, label_map_path, num_classes, doRecognition=True, saveImages=True):
+    def evaluateGraphs(self, path, label_map_path, num_classes, savepath, doRecognition=True, saveImages=True):
         index = 0
         for dirname, dirnames, filenames in os.walk(path):
             for filename in filenames:
@@ -146,7 +142,7 @@ class EvaluateNet:
 
                     if (os.path.isfile(imagepath)):
                         correct, wrong, unkown_detected, to_find, image = self.evaluateImage(labelpath, imagepath, label_map_path,
-                                                                                        num_classes, doRecognition)
+                                                                                        num_classes, savepath, doRecognition)
                         self.total_correct = self.total_correct + correct
                         self.total_wrong = self.total_wrong + wrong
                         self.total_unkown_detected = self.total_unkown_detected + unkown_detected
@@ -262,6 +258,9 @@ if __name__ == "__main__":
 
     # load recognition graph
     eval.recognizer.load_graph(graph_r,labels_r)
+    save_rec_image_path = logdir + '/rec_img'
+    if not os.path.exists(save_rec_image_path):
+        os.makedirs(save_rec_image_path)
 
     # iterate through all detections graphs in the given directory, then load and evaluate
     for dirname, dirnames, filenames in os.walk(graph_d):
@@ -271,7 +270,7 @@ if __name__ == "__main__":
 
                 print ("evaluate graph: {}".format(filepath))
                 eval.detector.load_graph(filepath, label_map_d)
-                eval.evaluateGraphs(testset, label_map_path, num_classes, doRecognition, save_images)
+                eval.evaluateGraphs(testset, label_map_path, num_classes, save_rec_image_path, doRecognition, save_images)
                 eval.printAndLog(filepath, logdir)
 
     #eval.detector.load_graph(graph_d,label_map_d)

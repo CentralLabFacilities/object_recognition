@@ -240,9 +240,8 @@ if __name__ == "__main__":
                     print("error: Surface label file does not exist! Skipping image.")
                     continue
                 bg_list.append("{}".format(file))
-
-    # rotation hardcoded
-    rotation = 360
+    # rotation limit
+    rotation = 80
 
     for dirname, dirnames, filenames in os.walk(image_path):
         for filename in filenames:
@@ -303,7 +302,6 @@ if __name__ == "__main__":
                     # check if mask and img have the same size
                     fh, fw, _ = fg_cut.shape
                     mh, mw = mask_cut.shape
-
                 for i in range(0,len(bg_list)):
                     bg_file = bg_list[i]
                     bg_label_path = bg_file.replace("/images/", "/labels/").replace(".jpg", ".txt")
@@ -314,6 +312,7 @@ if __name__ == "__main__":
                         bg_box_list[i] = utils.getAbsoluteRoiCoordinates(bg_box_list[i], w, h)
                     bbox_rand = getRandomPositionOnSurface(w_cut, h_cut, bg_box_list)
                     if not bbox_rand:
+                        # try again with smaller scaled object?
                         continue
                     bg_img, bg_path = placeRoiOnBackground(fg_cut, mask_cut, bg, bbox_rand, rot_path, i)
                     norm_box = utils.getNormalizedRoiCoordinates(bbox_rand, w, h)
@@ -322,7 +321,7 @@ if __name__ == "__main__":
                         for i in range(0, num_scale):
                             s_img, s_path, s_box = change_scale(l_img, norm_box, l_path, 0.3, 1.0)
                             for i in range(0, num_blur):
-                                b_img, b_path = blur_image(s_img, s_path, 1, 4)
+                                b_img, b_path = blur_image(s_img, s_path, 1, 3)
 
                                 b_box = s_box
                                 if(randint(0,1) == 1):
