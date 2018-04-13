@@ -9,13 +9,12 @@ import os
 import tensorflow as tf
 
 # object rec
-import image_recognition_util.evaluate
+from image_recognition_util import evaluate
 from image_recognition_util.object import Object
 from image_recognition_util.objectset_utils import ObjectsetUtils
-from object_tracking_msgs.msg import CategoryProbability
 from tensorflow_ros import detector
 from tensorflow_ros import recognizer
-import datetime
+
 
 
 flags = tf.app.flags
@@ -85,31 +84,32 @@ class EvaluateNet:
             if (abs(ymin-ymax) <= 0 or abs(xmin-xmax) <= 0):
                 print "ERROR: roi size is 0"
                 return None
-            #TODO: directly from memory
-            #imgpath = "{}/img{}.jpg".format(self._filepath,datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S_%f"))
-            #print imgpath
+            # TODO: directly from memory
+            # imgpath = "{}/img{}.jpg".format(self._filepath,datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S_%f"))
+            # print imgpath
             imgpath = "/tmp/rec_img.jpg"
             cv2.imwrite(filename=imgpath, img=roi)
-            #recognize
+            # recognize
             sorted_result = self.recognizer.recognize(imgpath)
             if sorted_result:
-                best_label = sorted_result[-1][0]
-                best_prob = sorted_result[-1][1]
-            #TODO: unknown probability hardcoded
-            best = CategoryProbability(label="unknown", probability=0.1)
-            if best_prob > best.probability:
-                best.label = best_label
-                best.probability = best_prob
+                tmp_label = sorted_result[-1][0]
+                tmp_prob = sorted_result[-1][1]
+            # TODO: unknown probability hardcoded
+            best_label = "unknown"
+            best_prob = 0.1
+            if tmp_prob > best_prob:
+                best_label = tmp_label
+                best_prob = tmp_prob
             # print old and new label
-            print("d: {} -> r: {}".format(self.detector.get_label(classes[i]),best.label))
+            print("d: {} -> r: {}".format(self.detector.get_label(classes[i]), best_label))
             # get label with highest probability
-            #for p in r.categorical_distribution.probabilities:
-            #    if p.probability > best.probability:
+            # for p in r.categorical_distribution.probabilities:
+            #    if p.probability > best_probability:
             #        best = p
-            #TODO: handle labels differently?
-            labels.append(best.label)
-            scores[i] = best.probability
-            if (best.label == "unkown"):
+            # TODO: handle labels differently?
+            labels.append(best_label)
+            scores[i] = best_prob
+            if (best_label == "unkown"):
                 print("unknown object found")
         detections = self.convertMsgToObject(labels, scores, boxes)
         return detections
