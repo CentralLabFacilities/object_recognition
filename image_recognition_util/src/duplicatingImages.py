@@ -226,7 +226,7 @@ if __name__ == "__main__":
         num_rotate = 2
     print("change image (light, scale, blur, rotate): {}x{}x{}x{} times".format(num_light, num_scale, num_blur, num_rotate))
 
-    print save_path
+    #print save_path
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
@@ -278,8 +278,8 @@ if __name__ == "__main__":
             if "mask.jpg" in file_path: # ignore masks
                 continue
 
-            print(file_path)
-            start = time.time()
+            #print(file_path)
+            #start = time.time()
 
             label_path = file_path.replace("/images/", "/labels/").replace(".jpg", ".txt")
             mask_path = file_path.replace(".jpg", "_mask.jpg")
@@ -330,5 +330,5 @@ if __name__ == "__main__":
                                 #save
                                 save_image(b_img, label_list, [b_box], b_path)
 
-            end = time.time()
-            print("time: {}".format(end - start))
+            #end = time.time()
+            #print("time: {}".format(end - start))
