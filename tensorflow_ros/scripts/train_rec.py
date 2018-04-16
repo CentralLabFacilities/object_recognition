@@ -14,6 +14,8 @@ flags.DEFINE_string('output', '/tmp', 'output dir')
 flags.DEFINE_integer('steps', 1000, 'training steps')
 flags.DEFINE_integer('batch', 10, 'batch size')
 
+
+
 FLAGS = flags.FLAGS
 
 
@@ -42,6 +44,10 @@ if __name__ == '__main__':
                            '\t--output\t default: /tmp\n' \
                            '\t--steps\t default: 1000\n' \
                            '\t--batch\t default: 10\n' \
+                           '\t--flip_left_right\t default: False\n' \
+                           '\t--random_crop\t default: 0\n' \
+                           '\t--random_scale\t default: 0\n' \
+                           '\t--random_brightness\t default: 0\n' \
                            '\033[0m'
         exit(1)
 
@@ -50,5 +56,6 @@ if __name__ == '__main__':
     output_dir = FLAGS.output
     steps = FLAGS.steps
     batch = FLAGS.batch
+
 
     trainInception(input_dir, output_dir, steps, batch)

@@ -11,7 +11,7 @@ from python_qt_binding.QtCore import *
 
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
-from object_tracking_msgs.msg import ObjectLocation, Hypothesis
+from object_tracking_msgs.msg import ObjectLocation, Hypothesis, ObjectShape
 
 from image_widget import ImageWidget
 from dialogs import option_dialog, warning_dialog, info_dialog
@@ -81,25 +81,42 @@ class DetectPlugin(Plugin):
             warning_dialog("Service Exception", str(e))
             return
         #Call depth lookup and segmentation
-        if (self._srv_depthLookup and self._srv_segment):
+        if (self._srv_segment):
             self.triggerSegmentation(result.objectLocationList)
         self.visualize_bounding_boxes(result.objectLocationList, image)
 
 
     def triggerSegmentation(self,detectionResult):
-        #set uuid
-        for obj in detectionResult:
-            obj_uuid = uuid.uuid4()
-            print(obj_uuid)
-            obj.name = str(obj_uuid)
-        print("do depth lookup")
-        depthLookupResult = self._srv_depthLookup(detectionResult)
+        print detectionResult
 
-        #todo: service call to segmentation with result of depthLookup (use 1 objectShape)
+        # set objectShapeList
+        depthLookupResult = []
+        for obj in detectionResult:
+            objectShape = ObjectShape()
+            objectShape.bounding_box = obj.bounding_box
+            objectShape.hypotheses = obj.hypotheses
+
+            # set uuid
+            obj_uuid = uuid.uuid4()
+            objectShape.name = str(obj_uuid)
+
+            # guess 3d roi
+            scale_factor = 2.0 #rgb->depth scale factor
+            objectShape.center.x = 0.0
+            objectShape.center.y = 0.0
+            objectShape.center.z = 0.5
+            objectShape.width = obj.bounding_box.width*scale_factor
+            objectShape.height = obj.bounding_box.height * scale_factor
+            objectShape.depth = 2.0
+            depthLookupResult.append(objectShape)
+
+        #print("do depth lookup")
+        #depthLookupResult = self._srv_depthLookup(detectionResult)
+
         print depthLookupResult
         print("do segmentation for each objectShape")
         try:
-            self._srv_segment(depthLookupResult.objectShapeList)
+            self._srv_segment(depthLookupResult)
         except Exception as e:
             warning_dialog("Service exception", str(e))
             return
@@ -191,12 +208,12 @@ class DetectPlugin(Plugin):
         else:
             rospy.loginfo("Service client with name '%s' cannot be created" % srv_name)
         #set depthLookup service
-        if not self._srv_depthLookup:
-            dl_name = "/clf_perception_depth_lookup_objects/depthLookup"
-            if dl_name in rosservice.get_service_list():
-                self._srv_depthLookup = rospy.ServiceProxy(dl_name, rosservice.get_service_class_by_name(dl_name))
-            else:
-                rospy.loginfo("Service client with name '%s' cannot be created" % dl_name)
+        #if not self._srv_depthLookup:
+        #    dl_name = "/clf_perception_depth_lookup_objects/depthLookup"
+        #    if dl_name in rosservice.get_service_list():
+        #        self._srv_depthLookup = rospy.ServiceProxy(dl_name, rosservice.get_service_class_by_name(dl_name))
+        #    else:
+        #        rospy.loginfo("Service client with name '%s' cannot be created" % dl_name)
         if not self._srv_segment:
             seg_name = "/segment"
             if seg_name in rosservice.get_service_list():
