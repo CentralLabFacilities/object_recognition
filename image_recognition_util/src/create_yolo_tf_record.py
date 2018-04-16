@@ -96,7 +96,7 @@ def main(_):
         num_classes = len(content)
         for i in range(0, num_classes):
             label = content[i]
-            label_map_string = label_map_string+"\nitem {\n  id:"+str(i+1)+"\n  name:'"+label+"'\n}"
+            label_map_string = label_map_string+"\nitem {\n  id:"+str(i+1)+"\n  name:\""+label+"\"\n}"
     with tf.gfile.Open(label_map_output, 'wb') as f:
         f.write(label_map_string)
     print('Successfully created the label map: {}'.format(label_map_output))

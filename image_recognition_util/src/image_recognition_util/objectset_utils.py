@@ -30,9 +30,10 @@ class ObjectsetUtils():
 
         dict_labels = {}
 
-        for i in range(0, (len(content) / 5)):
-            label = int(content[(i * 5) + 2][-1:])
-            s = content[(i * 5) + 3]
+        for i in range(0, (len(content) / 4)):
+            l = content[(i * 4) + 1]
+            label = int(l[l.index(':') + 1 : len(l)])
+            s = content[(i * 4) + 2]
             label_text = s[s.index('\"') + 1:s.rindex('\"')]
             dict_labels[label] = label_text
 

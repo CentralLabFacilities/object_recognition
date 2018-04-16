@@ -16,6 +16,7 @@ import time
 
 from image_recognition_util.objectset_utils import ObjectsetUtils
 from image_recognition_util.objectset_utils import BoundingBox
+import datetime
 
 # global variable, sorry for that
 train_txt = False
@@ -55,7 +56,7 @@ def save_image(image, labels, boxes, path):
         h, w, _ = image.shape
         bbox = utils.getAbsoluteRoiCoordinates(boxes[i],w,h)
         roi = image[bbox.ymin:bbox.ymax, bbox.xmin:bbox.xmax]
-        roi_path = path.replace("/images/", "/rois/").replace(".jpg", "._{}.jpg".format(i))
+        roi_path = path.replace("/images/", "/rois/").replace(".jpg", "_{}.jpg".format(i))
         cv2.imwrite(roi_path, roi)
 
 def show(img,time):
@@ -162,7 +163,6 @@ def rotate_image(image, mask, rotation, new_path):
     tmp_image = image.copy()
     tmp_mask = mask.copy()
     random_degree = float(randint(0, rotation - 1) % 360)
-
     tmp_image = ndimage.rotate(tmp_image, random_degree)
     tmp_mask = ndimage.rotate(tmp_mask, random_degree)
     bbox = utils.getBboxByMask(tmp_mask)
@@ -278,7 +278,6 @@ if __name__ == "__main__":
             if "mask.jpg" in file_path: # ignore masks
                 continue
 
-            #print(file_path)
             #start = time.time()
 
             label_path = file_path.replace("/images/", "/labels/").replace(".jpg", ".txt")
@@ -286,12 +285,15 @@ if __name__ == "__main__":
             if not (os.path.isfile(label_path) and os.path.isfile(mask_path)): # ignore image if label or mask doesnt exist
                 continue
 
+            print(file_path)
+
             image = cv2.imread(file_path)
             mask = cv2.imread(mask_path, 0)
             label_list, box_list = read_labels(label_path) # necessary?
             new_path = file_path.replace(image_path, save_path)
 
             for i in range(0,num_rotate):
+                cv2.imwrite("/tmp/img_{}.jpg".format(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S_%f")), image)
                 fg_cut, mask_cut, h_cut, w_cut, rot_path = rotate_image(image, mask, rotation, new_path)
                 # check if mask and img have the same size, otherwise retry
                 fh, fw, _ = fg_cut.shape
@@ -326,7 +328,6 @@ if __name__ == "__main__":
                                 b_box = s_box
                                 if(randint(0,1) == 1):
                                     b_img, b_path, b_box = mirror_image(b_img, s_box, b_path)
-
                                 #save
                                 save_image(b_img, label_list, [b_box], b_path)
 

@@ -192,12 +192,16 @@ def create_image_lists(image_dir, testing_percentage, validation_percentage):
       continue
     extensions = ['jpg', 'jpeg', 'JPG', 'JPEG']
     file_list = []
-    dir_name = os.path.basename(sub_dir)
+    if not ("rois" in sub_dir):
+        continue
+    # workaround for new paths
+    dir_name = os.path.basename(sub_dir.replace("/rois",""))
+    dir_name_search = dir_name + "/rois"
     if dir_name == image_dir:
       continue
-    print("Looking for images in '" + dir_name + "'")
+    print("Looking for images in '" + dir_name_search + "'")
     for extension in extensions:
-      file_glob = os.path.join(image_dir, dir_name, '*.' + extension)
+      file_glob = os.path.join(image_dir, dir_name_search, '*.' + extension)
       file_list.extend(glob.glob(file_glob))
     if not file_list:
       print('No files found')
@@ -206,7 +210,7 @@ def create_image_lists(image_dir, testing_percentage, validation_percentage):
       print('WARNING: Folder has less than 20 images, which may cause issues.')
     elif len(file_list) > MAX_NUM_IMAGES_PER_CLASS:
       print('WARNING: Folder {} has more than {} images. Some images will '
-            'never be selected.'.format(dir_name, MAX_NUM_IMAGES_PER_CLASS))
+            'never be selected.'.format(dir_name_search, MAX_NUM_IMAGES_PER_CLASS))
     label_name = re.sub(r'[^a-z0-9]+', ' ', dir_name.lower())
     training_images = []
     testing_images = []
@@ -246,7 +250,7 @@ def create_image_lists(image_dir, testing_percentage, validation_percentage):
 	tf.logging.info("No images in the category testing. Take first item from training set.")
 	testing_images.append(training_images.pop(0))"""
     result[label_name] = {
-        'dir': dir_name,
+        'dir': dir_name_search,
         'training': training_images,
         'testing': testing_images,
         'validation': validation_images,
@@ -462,7 +466,6 @@ def get_or_create_bottleneck(sess, image_lists, label_name, index, image_dir,
     bottleneck_string = ','.join(str(x) for x in bottleneck_values)
     with open(bottleneck_path, 'w') as bottleneck_file:
       bottleneck_file.write(bottleneck_string)
-
   with open(bottleneck_path, 'r') as bottleneck_file:
     bottleneck_string = bottleneck_file.read()
   bottleneck_values = [float(x) for x in bottleneck_string.split(',')]
@@ -835,6 +838,7 @@ def main(_, output_dir):
       FLAGS.random_brightness)
   sess = tf.Session()
 
+  print(do_distort_images)
   if do_distort_images:
     # We will be applying distortions, so setup the operations we'll need.
     distorted_jpeg_data_tensor, distorted_image_tensor = add_input_distortions(
