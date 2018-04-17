@@ -102,7 +102,7 @@ class DetectPlugin(Plugin):
             objectShape.name = str(obj_uuid)
 
             # guess 3d roi
-            scale_factor = 0.002 #rgb->depth scale factor (depthLookup: 2.0, why?)
+            scale_factor = 0.001 #rgb->depth scale factor (depthLookup: 2.0, why?)
             print(obj.bounding_box.x_offset - w/2)
             print(obj.bounding_box.y_offset - h/2)
             objectShape.center.x = (obj.bounding_box.x_offset - w/2) * scale_factor # estimate 3d location by offset of 2d image center
