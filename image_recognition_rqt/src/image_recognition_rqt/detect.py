@@ -82,12 +82,13 @@ class DetectPlugin(Plugin):
             return
         #Call depth lookup and segmentation
         if (self._srv_segment):
-            self.triggerSegmentation(result.objectLocationList)
+            self.triggerSegmentation(result.objectLocationList, image)
         self.visualize_bounding_boxes(result.objectLocationList, image)
 
 
-    def triggerSegmentation(self,detectionResult):
+    def triggerSegmentation(self,detectionResult, image):
         print detectionResult
+        h, w, _ = image.shape
 
         # set objectShapeList
         depthLookupResult = []
@@ -101,13 +102,15 @@ class DetectPlugin(Plugin):
             objectShape.name = str(obj_uuid)
 
             # guess 3d roi
-            scale_factor = 2.0 #rgb->depth scale factor
-            objectShape.center.x = 0.0
-            objectShape.center.y = 0.0
+            scale_factor = 0.002 #rgb->depth scale factor (depthLookup: 2.0, why?)
+            print(obj.bounding_box.x_offset - w/2)
+            print(obj.bounding_box.y_offset - h/2)
+            objectShape.center.x = (obj.bounding_box.x_offset - w/2) * scale_factor # estimate 3d location by offset of 2d image center
+            objectShape.center.y = (obj.bounding_box.y_offset - h/2) * scale_factor
             objectShape.center.z = 0.5
-            objectShape.width = obj.bounding_box.width*scale_factor
+            objectShape.width = obj.bounding_box.width*scale_factor# is this a good idea
             objectShape.height = obj.bounding_box.height * scale_factor
-            objectShape.depth = 2.0
+            objectShape.depth = 0.9
             depthLookupResult.append(objectShape)
 
         #print("do depth lookup")
