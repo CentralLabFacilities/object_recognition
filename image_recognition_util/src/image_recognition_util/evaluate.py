@@ -48,13 +48,13 @@ def evaluateDetection(annotatedList, detectedList, threshold, image, savepath):
                 color = (0, 255, 0)    # green
             else:
                 num_wrong += 1
-                color = (0, 0, 255)    # red but why?
+                color = (0, 0, 255)    # red
         elif (detected.label == "unknown"):
             num_correct += 1
             color = (0, 255, 0)  # green
         else:
             num_wrong_detected += 1
-            color = (255, 0, 0)  # blue but why?
+            color = (255, 0, 0)  # blue
 
         #save roi for recognition retraining
         roi = getRoi(img_cpy, detected)
@@ -104,8 +104,6 @@ def matchBoundingBoxes(detected, annotated, max_ratio=2):
     width_det = xmax_det - xmin_det
     height_det = ymax_det - ymin_det
     area_det = width_det * height_det
-
-
 
     #Annotated vars
     xmax_an = annotated.bbox.xmax

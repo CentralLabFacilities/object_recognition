@@ -114,11 +114,17 @@ class EvaluateNet:
         detections = self.convertMsgToObject(labels, scores, boxes)
         return detections
 
+    def numObjectsToFind(self, annotatedList):
+        to_find = 0
+        for annotated in annotatedList:
+            if not (annotated.label == "unknown"):
+                to_find = to_find + 1
+        return to_find
 
     def evaluateImage(self, labelpath, imagepath, label_map_path, num_classes, savepath, doRecognition=True):
         cvImage = cv2.imread(imagepath, 3)
         annotatedList = self.util.readAnnotated(labelpath, label_map_path, num_classes)
-        to_find = len(annotatedList)
+        to_find = self.numObjectsToFind(annotatedList)
         if doRecognition:
             detectedList = self.detectAndRecognize(cvImage)
 
