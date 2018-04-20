@@ -103,15 +103,16 @@ class DetectPlugin(Plugin):
 
             # guess 3d roi
             scale_factor = 0.001 #rgb->depth scale factor (depthLookup: 2.0, why?)
+            width_factor = 1.3
             # estimate 3d location by offset of 2d image center (rgb and depth camera coordinate frames are slightly shifted!)
             x_shift = 0.09 # urdf_val * 3
             y_shift = -0.15 # urdf_val * 3
             objectShape.center.x = (obj.bounding_box.x_offset - w/2) * scale_factor + x_shift
             objectShape.center.y = (obj.bounding_box.y_offset - h/2) * scale_factor + y_shift
             objectShape.center.z = 0.5
-            objectShape.width = obj.bounding_box.width*scale_factor
-            objectShape.height = obj.bounding_box.height * scale_factor
-            objectShape.depth = 0.9
+            objectShape.width = obj.bounding_box.width * scale_factor * width_factor
+            objectShape.height = obj.bounding_box.height * scale_factor * width_factor
+            objectShape.depth = 0.7
             depthLookupResult.append(objectShape)
 
         #print("do depth lookup")
