@@ -106,7 +106,7 @@ class DetectPlugin(Plugin):
             width_factor = 1.3
             # estimate 3d location by offset of 2d image center (rgb and depth camera coordinate frames are slightly shifted!)
             x_shift = 0.09 # urdf_val * 3
-            y_shift = -0.15 # urdf_val * 3
+            y_shift = -0.05 # urdf_val * 3
             objectShape.center.x = (obj.bounding_box.x_offset - w/2) * scale_factor + x_shift
             objectShape.center.y = (obj.bounding_box.y_offset - h/2) * scale_factor + y_shift
             objectShape.center.z = 0.5
