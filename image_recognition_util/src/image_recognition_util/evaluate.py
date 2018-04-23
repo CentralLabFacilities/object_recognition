@@ -7,21 +7,28 @@ maxDistX = 1.0
 maxDistY = 1.0
 
 
-def evaluateDetection(annotatedList, detectedList, threshold, image, savepath):
+def evaluateDetection(annotatedList, detectedList, image, savepath, d_probs):
     num_correct = 0           # correct detected and recognized objects
     num_wrong = 0             # correct detected but wrong recognized objects
     num_wrong_detected = 0    # wrong detected objects
 
     img_cpy = image.copy()
 
+    d_probs_correct = []
+    d_probs_wrong = []
+    r_probs_correct = []
+    r_probs_wrong = []
+    #TODO: check d_probs empty -> only detection!!
+
     # draw annotated bboxes with color: black
     color = (0, 0, 0)
     for annotated in annotatedList:
-        drawBbox(color, image, annotated)
+        drawBbox(color, image, annotated, None)
 
 
     # evaluation loop for each detected object
-    for detected in detectedList:
+    for i in range(0,len(detectedList)):
+        detected = detectedList[i]
         correct_recognized = False
         correct_detected = False  # false if none or to many annotations fit
         double_detected = False   # check if a better detection exist
@@ -29,7 +36,7 @@ def evaluateDetection(annotatedList, detectedList, threshold, image, savepath):
 
         # check whether the object is correct detected and/or labeled
         for annotated in annotatedList:
-            if (matchBoundingBoxes(detected, annotated) and detected.prob > threshold):
+            if (matchBoundingBoxes(detected, annotated)):
                 correct_detected += 1
                 if (detected.label == annotated.label):
                     correct_recognized = True
@@ -41,28 +48,33 @@ def evaluateDetection(annotatedList, detectedList, threshold, image, savepath):
 
         # coloring the detection
         if (double_detected):
+            d_probs_correct.append(d_probs[i])
             color = (0, 255, 255)  # yellow
         elif (correct_detected):
+            d_probs_correct.append(d_probs[i])
             if (correct_recognized):
                 num_correct += 1
+                r_probs_correct.append(detected.prob)
                 color = (0, 255, 0)    # green
             else:
                 num_wrong += 1
+                r_probs_wrong.append(detected.prob)
                 color = (0, 0, 255)    # red
         elif (detected.label == "unknown"):
             num_correct += 1
             color = (0, 255, 0)  # green
         else:
             num_wrong_detected += 1
+            d_probs_wrong.append(d_probs[i])
             color = (255, 0, 0)  # blue
 
         #save roi for recognition retraining
         roi = getRoi(img_cpy, detected)
         saveRoiImage(savepath, savelabel, roi)
         #draw bounding box
-        drawBbox(color, image, detected)
+        drawBbox(color, image, detected, d_probs[i])
 
-    return num_correct, num_wrong, num_wrong_detected, image
+    return num_correct, num_wrong, num_wrong_detected, image, d_probs_correct, d_probs_wrong, r_probs_correct, r_probs_wrong
 
 def saveRoiImage(savepath, label, image):
     imgfile = savepath + '/' + label
@@ -86,11 +98,16 @@ def doubleTest(detected, other_detected):
     return False
 
 
-def drawBbox(color, image, detected):
+def drawBbox(color, image, detected, d_prob):
     height, width, channels = image.shape
     cv2.rectangle(image, (int(detected.bbox.xmin * width), int(detected.bbox.ymin * height)),
                   (int(detected.bbox.xmax * width), int(detected.bbox.ymax * height)), color, 2)
-    image_label = '%s %f' % (detected.label, detected.prob)
+    if (d_prob == None):
+        #annotations
+        image_label = '%s' % (detected.label)
+    else:
+        #detections
+        image_label = '%s %f - %f' % (detected.label, detected.prob, d_prob)
     cv2.putText(image, image_label, (int(detected.bbox.xmin * width), int(detected.bbox.ymin * height)), 0, 0.6, color,
                 1)
 

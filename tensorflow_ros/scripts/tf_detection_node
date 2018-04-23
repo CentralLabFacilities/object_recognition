@@ -30,7 +30,8 @@ from tensorflow_ros import recognizer
 
 class TensorflowDetectionNode:
     """ Performs object detection using Tensorflow neural networks """
-    def __init__(self, graph_path, labels_path, rec_path, save_images_folder,num_classes=99,detection_threshold=0.5,image_topic="/pepper_robot/sink/front/image_raw"):
+    def __init__(self, graph_path, labels_path, rec_path, save_images_folder,num_classes=99,detection_threshold=0.5,
+                 image_topic="/pepper_robot/sink/front/image_raw",show_results=True,do_segmentation=False):
         """ Constructor
         :param graph_path: string with path + filename (incl. extension) indicating the database location
         :param labels_path: string with path + filename (incl. extension) indicating the location of the text file
@@ -69,6 +70,11 @@ class TensorflowDetectionNode:
         self.roi_path = "/tmp/"
         graph_r = rec_path + "/output_graph.pb"
         labels_r = rec_path + "/output_labels.txt"
+
+        rospy.loginfo("show_results: {}".format(show_results))
+        rospy.loginfo("do_segmentation: {}".format(do_segmentation))
+        self._show_results = show_results
+        self._do_detection = do_segmentation
 
         self._sub = rospy.Subscriber(image_topic, Image, self._image_callback)
         rospy.loginfo("Listening to %s -- spinning .." % self._sub.name)
@@ -168,9 +174,10 @@ class TensorflowDetectionNode:
 
         # add results
         for i in range(0,len(classes)):
-            if (labels[i] == "unkown"):
-                print "unknown object"
             if (labels [i] == "reject"):
+                continue
+            # threshold for recognition
+            if (scores[i] < 0.5):
                 continue
 
             objectLocation = ObjectLocation()
@@ -186,7 +193,24 @@ class TensorflowDetectionNode:
             objectLocation.bounding_box.width = int((roi[3]-roi[1])*self._size['width'])
             self._objectLocationList.append(objectLocation)
 
+        # show results
+        if (self._show_results):
+            self.visualize_bounding_boxes(self._objectLocationList, self._bgr_image)
+
         self._do_detection = False
+
+    def visualize_bounding_boxes(self, result, image):
+        # visualization of detection results
+        for i in range(0, len(result)):
+            prob = result[i].hypotheses[0].reliability
+            label = result[i].hypotheses[0].label
+            bbox = result[i].bounding_box
+            cv2.rectangle(image, (int(bbox.x_offset), int(bbox.y_offset)),
+                          (int(bbox.x_offset + bbox.width), int(bbox.y_offset + bbox.height)), (0, 100, 200), 2)
+            image_label = '%s %f' % (label, prob)
+            cv2.putText(image, image_label, (int(bbox.x_offset), int(bbox.y_offset)), 0, 0.4, (0, 0, 255), 1)
+        cv2.imshow('tf detection', image)
+        cv2.waitKey(0)
 
 if __name__ == '__main__':
 
@@ -201,6 +225,8 @@ if __name__ == '__main__':
         save_images = rospy.get_param("~save_images", True)
         image_topic = rospy.get_param("~image_topic", "/pepper_robot/sink/front/image_raw")
         _rec_path = os.path.expanduser(rospy.get_param("~rec_path"))
+        _show_results = rospy.get_param("~show_results", True)
+        _do_segmentation = rospy.get_param("~do_segmentation", False)
 
         save_images_folder = None
         if save_images:
@@ -216,7 +242,9 @@ if __name__ == '__main__':
                                                save_images_folder=save_images_folder,
                                                num_classes=num_classes,
                                                detection_threshold=detection_threshold,
-                                               image_topic=image_topic)
+                                               image_topic=image_topic,
+                                               show_results=_show_results,
+                                               do_segmentation=_do_segmentation)
     # Start update loop
     r = rospy.Rate(100.0)
     while not rospy.is_shutdown():

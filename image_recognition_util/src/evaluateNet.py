@@ -34,7 +34,8 @@ FLAGS = flags.FLAGS
 class EvaluateNet:
     def __init__(self, threshold):
         # variables
-        self.threshold = threshold
+        self.threshold_d = 0.5
+        self.threshold_r = 0.5
         self.total_correct = 0
         self.total_wrong = 0
         self.total_images = 0
@@ -45,7 +46,7 @@ class EvaluateNet:
 
         # objects
         print("initialize detector with threshold {}".format(threshold))
-        self.detector = detector.Detector(detection_threshold=self.threshold)
+        self.detector = detector.Detector(detection_threshold=0.2)
         self.recognizer = recognizer.Recognizer()
         self.util = ObjectsetUtils()
 
@@ -71,6 +72,7 @@ class EvaluateNet:
 
 
     def detectAndRecognize(self, cvImage):
+        d_thresh_list = []
         height, width, channels = cvImage.shape
         #detect
         labels = []
@@ -108,11 +110,12 @@ class EvaluateNet:
             #        best = p
             # TODO: handle labels differently?
             labels.append(best_label)
+            d_thresh_list.append(scores[i])
             scores[i] = best_prob
             if (best_label == "unkown"):
                 print("unknown object found")
         detections = self.convertMsgToObject(labels, scores, boxes)
-        return detections
+        return detections, d_thresh_list
 
     def numObjectsToFind(self, annotatedList):
         to_find = 0
@@ -122,11 +125,12 @@ class EvaluateNet:
         return to_find
 
     def evaluateImage(self, labelpath, imagepath, label_map_path, num_classes, savepath, doRecognition=True):
+        d_thresh_list = []
         cvImage = cv2.imread(imagepath, 3)
         annotatedList = self.util.readAnnotated(labelpath, label_map_path, num_classes)
         to_find = self.numObjectsToFind(annotatedList)
         if doRecognition:
-            detectedList = self.detectAndRecognize(cvImage)
+            detectedList, d_thresh_list = self.detectAndRecognize(cvImage)
 
         else:
             detectedList = self.detect(cvImage)
@@ -134,12 +138,16 @@ class EvaluateNet:
         if (detectedList == None):
             return 0,0,0,0,cvImage
 
-        correct, wrong, unkown_detected, image = evaluate.evaluateDetection(annotatedList, detectedList, self.threshold, cvImage, savepath)
-        return correct, wrong, unkown_detected, to_find, image
+        correct, wrong, unkown_detected, image, d_probs_correct, d_probs_wrong, r_probs_correct, r_probs_wrong = evaluate.evaluateDetection(annotatedList, detectedList, cvImage, savepath, d_thresh_list)
+        return correct, wrong, unkown_detected, to_find, image, d_probs_correct, d_probs_wrong, r_probs_correct, r_probs_wrong
 
 
     def evaluateGraphs(self, path, label_map_path, num_classes, savepath, doRecognition=True, saveImages=True):
         index = 0
+        dp_correct = []
+        dp_wrong = []
+        rp_correct = []
+        rp_wrong = []
         for dirname, dirnames, filenames in os.walk(path):
             for filename in filenames:
                 labelpath = dirname + '/' + filename
@@ -147,18 +155,59 @@ class EvaluateNet:
                     imagepath = "{}/images/{}.jpg".format(dirname[:-7], filename[:-4])
 
                     if (os.path.isfile(imagepath)):
-                        correct, wrong, unkown_detected, to_find, image = self.evaluateImage(labelpath, imagepath, label_map_path,
+                        correct, wrong, unkown_detected, to_find, image, d_probs_correct, d_probs_wrong, r_probs_correct, r_probs_wrong = self.evaluateImage(labelpath, imagepath, label_map_path,
                                                                                         num_classes, savepath, doRecognition)
                         self.total_correct = self.total_correct + correct
                         self.total_wrong = self.total_wrong + wrong
                         self.total_unkown_detected = self.total_unkown_detected + unkown_detected
                         self.total_images = self.total_images + 1
                         self.total_to_find = self.total_to_find + to_find
+                        dp_correct = dp_correct + d_probs_correct
+                        dp_wrong = dp_wrong + d_probs_wrong
+                        rp_correct = rp_correct + r_probs_correct
+                        rp_wrong = rp_wrong + r_probs_wrong
 
                         if saveImages:
                             save_filename = '{}/eval_image{}.jpg'.format(logdir, index)
                             cv2.imwrite(save_filename, image)
                             index = index + 1
+
+        self.threshold_d, self.threshold_r = self.getThreshold(dp_correct, dp_wrong, rp_correct, rp_wrong)
+
+    def getThreshold(self, dp_correct, dp_wrong, rp_correct, rp_wrong):
+        #detection
+        td = 0.5
+        dp_correct.sort()
+        dp_wrong.sort()
+        bestRatio = 0.0
+        for i in range(5,49):
+            i = i*0.02
+            correct = sum((p > i) for p in dp_correct)
+            wrong = sum((p > i) for p in dp_wrong)
+            ratio = correct / wrong
+            if (ratio > bestRatio):
+                print(correct, wrong)
+                bestRatio = ratio
+                td = i
+        print("best detection threshold: %f" % td)
+
+        #recognition
+        tr = 0.5
+        rp_correct.sort()
+        rp_wrong.sort()
+        bestRatio = 0.0
+        for i in range(5,49):
+            i = i*0.02
+            correct = sum((p > i) for p in rp_correct)
+            wrong = sum((p > i) for p in rp_wrong)
+            ratio = correct / wrong
+            if (ratio > bestRatio):
+                print(correct, wrong)
+                bestRatio = ratio
+                tr = i
+        print("best recognition threshold: %f" % tr)
+
+        return td, tr
 
     def printAndLog(self, graph_path, logdir):
         filename = logdir+"/log.txt"
@@ -181,7 +230,7 @@ class EvaluateNet:
         print(print_str)
         unknown_percent = float(eval.total_unkown_detected) / float(eval.total_images)
         self.log_str = self.log_str + str(detect_percent) + "\t" + str(recognize_percent) + "\t" + str(unknown_percent) + "\t" + graph_path + "\n"
-
+        self.log_str = self.log_str + "threshold: \t" + str(self.threshold_d) +"\t" + str(self.threshold_r)
 
         print("save log at: {}".format(filename))
         if not os.path.exists(logdir):
