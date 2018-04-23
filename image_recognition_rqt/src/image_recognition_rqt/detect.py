@@ -22,8 +22,6 @@ _SUPPORTED_SERVICES = ["object_tracking_msgs/DetectObjects"]
 
 from tf_detector import TfDetector
 
-import uuid
-
 
 class DetectPlugin(Plugin):
     def __init__(self, context):
@@ -80,51 +78,8 @@ class DetectPlugin(Plugin):
         except Exception as e:
             warning_dialog("Service Exception", str(e))
             return
-        #Call depth lookup and segmentation
-        if (self._srv_segment):
-            self.triggerSegmentation(result.objectLocationList, image)
         self.visualize_bounding_boxes(result.objectLocationList, image)
 
-
-    def triggerSegmentation(self,detectionResult, image):
-        print detectionResult
-        h, w, _ = image.shape
-
-        # set objectShapeList
-        depthLookupResult = []
-        for obj in detectionResult:
-            objectShape = ObjectShape()
-            objectShape.bounding_box = obj.bounding_box
-            objectShape.hypotheses = obj.hypotheses
-
-            # set uuid
-            obj_uuid = uuid.uuid4()
-            objectShape.name = str(obj_uuid)
-
-            # guess 3d roi
-            scale_factor = 0.001 #rgb->depth scale factor (depthLookup: 2.0, why?)
-            width_factor = 1.3
-            # estimate 3d location by offset of 2d image center (rgb and depth camera coordinate frames are slightly shifted!)
-            x_shift = 0.09 # urdf_val * 3
-            y_shift = -0.05 # urdf_val * 3
-            objectShape.center.x = (obj.bounding_box.x_offset - w/2) * scale_factor + x_shift
-            objectShape.center.y = (obj.bounding_box.y_offset - h/2) * scale_factor + y_shift
-            objectShape.center.z = 0.5
-            objectShape.width = obj.bounding_box.width * scale_factor * width_factor
-            objectShape.height = obj.bounding_box.height * scale_factor * width_factor
-            objectShape.depth = 0.7
-            depthLookupResult.append(objectShape)
-
-        #print("do depth lookup")
-        #depthLookupResult = self._srv_depthLookup(detectionResult)
-
-        print depthLookupResult
-        print("do segmentation for each objectShape")
-        try:
-            self._srv_segment(depthLookupResult)
-        except Exception as e:
-            warning_dialog("Service exception", str(e))
-            return
 
     # TODO: replace with button callback
     def image_roi_callback(self, roi_image):

@@ -7,6 +7,7 @@ import sys
 
 # ROS
 import rospy
+import rosservice
 
 from sensor_msgs.msg import Image
 
@@ -22,7 +23,7 @@ import uuid
 # object recognition
 import object_tracking_msgs
 from object_tracking_msgs.srv import DetectObjects
-from object_tracking_msgs.msg import ObjectLocation, Hypothesis
+from object_tracking_msgs.msg import ObjectLocation, Hypothesis, ObjectShape
 from object_tracking_msgs.msg import CategoryProbability
 from image_recognition_util import image_writer_test_gui
 from tensorflow_ros import detector
@@ -31,7 +32,7 @@ from tensorflow_ros import recognizer
 class TensorflowDetectionNode:
     """ Performs object detection using Tensorflow neural networks """
     def __init__(self, graph_path, labels_path, rec_path, save_images_folder,num_classes=99,detection_threshold=0.5,
-                 image_topic="/pepper_robot/sink/front/image_raw",show_results=True,do_segmentation=False):
+                 image_topic="/pepper_robot/sink/front/image_raw",show_results=True):
         """ Constructor
         :param graph_path: string with path + filename (incl. extension) indicating the database location
         :param labels_path: string with path + filename (incl. extension) indicating the location of the text file
@@ -50,6 +51,8 @@ class TensorflowDetectionNode:
             sys.exit(err_msg)
 
         self._unknown_prob = 0.1
+        self.do_segmentation = False
+        self.segmentation_result = False
 
         #init detector
         self.detector = detector.Detector(num_classes, detection_threshold)
@@ -60,6 +63,12 @@ class TensorflowDetectionNode:
         self._detect_srv = rospy.Service('detect', DetectObjects, self._detect_srv_callback)
         self._do_detection = False  # Indicates whether a new request has been received and thus detection must
         # be performed
+
+        self.seg_service_name = "/segment"
+        if self.seg_service_name in rosservice.get_service_list():
+            self._srv_segment = rospy.ServiceProxy(self.seg_service_name, rosservice.get_service_class_by_name(self.seg_service_name))
+        else:
+            self._srv_segment = None
 
         self._filename = "/tmp/tf_obj_detect.jpg"  # Temporary file name
         self._size = {'width': 0, 'height': 0}
@@ -72,9 +81,7 @@ class TensorflowDetectionNode:
         labels_r = rec_path + "/output_labels.txt"
 
         rospy.loginfo("show_results: {}".format(show_results))
-        rospy.loginfo("do_segmentation: {}".format(do_segmentation))
         self._show_results = show_results
-        self._do_detection = do_segmentation
 
         self._sub = rospy.Subscriber(image_topic, Image, self._image_callback)
         rospy.loginfo("Listening to %s -- spinning .." % self._sub.name)
@@ -125,15 +132,24 @@ class TensorflowDetectionNode:
         self._size['width'] = size[1]
         self._objectLocationList = []
         self._do_detection = True
+        self.do_segmentation = req.doSegmentation
+        print("do segmentation: {}".format(self.do_segmentation))
+        if not self._srv_segment:
+            if self.seg_service_name in rosservice.get_service_list():
+                self._srv_segment = rospy.ServiceProxy(self.seg_service_name, rosservice.get_service_class_by_name(self.seg_service_name))
+            else:
+                self.do_segmentation = False
+                rospy.logerr("Segmentation service client not found!")
+
 
         # Wait until the request has been processed and return the result
         r = rospy.Rate(1000.0)  # Not a problem to spin quickly
         while not rospy.is_shutdown():
             if not self._do_detection:
-                return {"objectLocationList": self._objectLocationList}
-        print self._objectLocationList
+                detectRes = {"objectLocationList": self._objectLocationList, "segmentationResult": self.segmentation_result}
+                return detectRes
         # Return an empty result if rospy has been shutdown
-        return {"detections": []}
+        return {"objectLocationList": [], "segmentationResult": False}
 
     def update(self):
         """ Do the actual work: if _do_detection is True, it retrieves the saved image and tries to classify it.
@@ -197,6 +213,41 @@ class TensorflowDetectionNode:
         if (self._show_results):
             self.visualize_bounding_boxes(self._objectLocationList, self._bgr_image)
 
+        # do segmentation
+        if (self.do_segmentation):
+
+            # depth lookup
+            depthLookupResult = []
+            for obj in self._objectLocationList:
+                objectShape = ObjectShape()
+                objectShape.bounding_box = obj.bounding_box
+                objectShape.hypotheses = obj.hypotheses
+                objectShape.name = obj.name
+
+                scale_factor = 0.001  # rgb->depth scale factor (depthLookup: 2.0, why?)
+                width_factor = 1.3
+                # estimate 3d location by offset of 2d image center (rgb and depth camera coordinate frames are slightly shifted!)
+                x_shift = 0.09  # urdf_val * 3
+                y_shift = -0.05  # urdf_val
+                objectShape.center.x = (obj.bounding_box.x_offset - width / 2) * scale_factor + x_shift
+                objectShape.center.y = (obj.bounding_box.y_offset - height / 2) * scale_factor + y_shift
+                objectShape.center.z = 0.5
+                objectShape.width = obj.bounding_box.width * scale_factor * width_factor
+                objectShape.height = obj.bounding_box.height * scale_factor * width_factor
+                objectShape.depth = 0.7
+                depthLookupResult.append(objectShape)
+
+            print depthLookupResult
+            # call segmentation
+            try:
+                seg_res = self._srv_segment(depthLookupResult).done
+                print(seg_res)
+                self.segmentation_result = seg_res
+            except Exception as e:
+                rospy.logerr("Exception in segmentation service call: ")
+                self.segmentation_result = False
+            self.do_segmentation = False
+
         self._do_detection = False
 
     def visualize_bounding_boxes(self, result, image):
@@ -210,7 +261,7 @@ class TensorflowDetectionNode:
             image_label = '%s %f' % (label, prob)
             cv2.putText(image, image_label, (int(bbox.x_offset), int(bbox.y_offset)), 0, 0.4, (0, 0, 255), 1)
         cv2.imshow('tf detection', image)
-        cv2.waitKey(0)
+        cv2.waitKey(1)
 
 if __name__ == '__main__':
 
@@ -226,7 +277,6 @@ if __name__ == '__main__':
         image_topic = rospy.get_param("~image_topic", "/pepper_robot/sink/front/image_raw")
         _rec_path = os.path.expanduser(rospy.get_param("~rec_path"))
         _show_results = rospy.get_param("~show_results", True)
-        _do_segmentation = rospy.get_param("~do_segmentation", False)
 
         save_images_folder = None
         if save_images:
@@ -243,8 +293,7 @@ if __name__ == '__main__':
                                                num_classes=num_classes,
                                                detection_threshold=detection_threshold,
                                                image_topic=image_topic,
-                                               show_results=_show_results,
-                                               do_segmentation=_do_segmentation)
+                                               show_results=_show_results)
     # Start update loop
     r = rospy.Rate(100.0)
     while not rospy.is_shutdown():
