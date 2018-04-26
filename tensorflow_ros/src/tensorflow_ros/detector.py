@@ -37,7 +37,7 @@ class Detector:
         if self.detection_graph == None:
             print "No graph defined. You need to load a graph before detecting objects!"
             return None
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.333)
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.25)
         with self.detection_graph.as_default():
             with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options), graph=self.detection_graph) as sess:
                 # Definite input and output Tensors for detection_graph

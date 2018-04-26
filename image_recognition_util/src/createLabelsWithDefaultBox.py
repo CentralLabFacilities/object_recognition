@@ -1,5 +1,6 @@
 import sys
 import os
+import imghdr
 
 def add_label(file, label):
 
@@ -15,7 +16,7 @@ if __name__ == "__main__":
 
     # check for correct argument size
     if not len(sys.argv) == 2:
-        print '\033[91m' + 'Argument Error!\nUsage: python fix_txt.py path_to_dataset' + '\033[0m'
+        print '\033[91m' + 'Argument Error!\nUsage: python createLabelsWithDefaultBox.py path_to_dataset' + '\033[0m'
         exit(1)
 
     # check if argument given is a directory
@@ -55,15 +56,22 @@ if __name__ == "__main__":
         print("class: ",className," with id: ",i)
         for dirname, dirnames, filenames in os.walk(class_path):
             for filename in filenames:
-                if not "images" in filename and ".jpg" in filename:
+                if not "images" in filename and "_mask.jpg" in filename:
+
                     # move image files to image folder
-                    cur_image = dirname + '/' + filename
-                    new_image = image_path + '/' + filename
+                    cur_image_mask = dirname + '/' + filename
+                    new_image_mask = image_path + '/' + filename
+                    print ("move image {} to {}".format(cur_image_mask, new_image_mask))
+                    os.rename(cur_image_mask, new_image_mask)
+
+                    imgname = filename.replace("_mask.jpg", ".jpg")
+                    cur_image = dirname + '/' + imgname
+                    new_image = image_path + '/' + imgname
                     print ("move image {} to {}".format(cur_image, new_image))
                     os.rename(cur_image, new_image)
-                if not "mask" in filename:
+
                     # add label file
-                    f = (label_txt_path + '/' + filename).replace('jpg','txt')
+                    f = (label_txt_path + '/' + imgname).replace('jpg','txt')
                     print ("add label file: {}".format(f))
                     add_label(f,i)
 
