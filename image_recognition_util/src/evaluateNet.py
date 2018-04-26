@@ -229,8 +229,8 @@ class EvaluateNet:
                   + "\nunknown detections: {} ({} per image)\n".format(eval.total_unkown_detected, (eval.total_unkown_detected/eval.total_images))
         print(print_str)
         unknown_percent = float(eval.total_unkown_detected) / float(eval.total_images)
-        self.log_str = self.log_str + str(detect_percent) + "\t" + str(recognize_percent) + "\t" + str(unknown_percent) + "\t" + graph_path + "\n"
-        self.log_str = self.log_str + "threshold: \t" + str(self.threshold_d) +"\t" + str(self.threshold_r)
+        self.log_str = self.log_str + str(detect_percent) + "\t" + str(recognize_percent) + "\t" + str(unknown_percent) + "\t" + graph_path + "\t"
+        self.log_str = self.log_str + "threshold: \t" + str(self.threshold_d) +"\t" + str(self.threshold_r) + "\n"
 
         print("save log at: {}".format(filename))
         if not os.path.exists(logdir):
