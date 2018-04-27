@@ -347,10 +347,15 @@ if __name__ == "__main__":
                         bg_box_list[i] = utils.getAbsoluteRoiCoordinates(bg_box_list[i], w, h)
                     bbox_rand = getRandomPositionOnSurface(w_cut, h_cut, bg_box_list)
                     if not bbox_rand:
+                        # try to read annotated label (magdeburg handover object)
+                        norm_box = box_list[0]
+                        bg_img = image
+                        bg_path = rot_path
                         # try again with smaller scaled object?
-                        continue
-                    bg_img, bg_path = placeRoiOnBackground(fg_cut, mask_cut, bg, bbox_rand, rot_path, i)
-                    norm_box = utils.getNormalizedRoiCoordinates(bbox_rand, w, h)
+                        #continue
+                    else:
+                        bg_img, bg_path = placeRoiOnBackground(fg_cut, mask_cut, bg, bbox_rand, rot_path, i)
+                        norm_box = utils.getNormalizedRoiCoordinates(bbox_rand, w, h)
                     for i in range(0, num_light):
                         l_img, l_path = change_lighting(bg_img, bg_path, 0.3, 0.7)
                         for i in range(0, num_scale):

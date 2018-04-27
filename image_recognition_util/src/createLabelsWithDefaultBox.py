@@ -15,7 +15,7 @@ def add_label(file, label):
 if __name__ == "__main__":
 
     # check for correct argument size
-    if not len(sys.argv) == 2:
+    if not len(sys.argv) >= 2:
         print '\033[91m' + 'Argument Error!\nUsage: python createLabelsWithDefaultBox.py path_to_dataset' + '\033[0m'
         exit(1)
 
@@ -54,6 +54,7 @@ if __name__ == "__main__":
             os.makedirs(label_txt_path)
 
         print("class: ",className," with id: ",i)
+
         for dirname, dirnames, filenames in os.walk(class_path):
             for filename in filenames:
                 if not "images" in filename and "_mask.jpg" in filename:
