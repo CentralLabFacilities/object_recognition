@@ -254,7 +254,7 @@ class TensorflowDetectionNode:
 
         self._do_detection = False
 
-    #TODO: remove dirty hack back in Bielefeld
+    #TODO: improve visualization
     def visualize_bounding_boxes(self, result, image):
         # visualization of detection results
         toDraw = {}
@@ -265,8 +265,8 @@ class TensorflowDetectionNode:
             elif result[toDraw[tmp_label]].hypotheses[0].reliability < result[i].hypotheses[0].reliability:
                 toDraw[result[i].hypotheses[0].label] = i
 
-        for key in toDraw:
-            i = toDraw[key]
+        for i in range(0, len(result)):      #for key in toDraw:
+            #i = toDraw[key]
             prob = result[i].hypotheses[0].reliability
             prob = round(prob, 2)
             label = result[i].hypotheses[0].label
@@ -274,7 +274,7 @@ class TensorflowDetectionNode:
             cv2.rectangle(image, (int(bbox.x_offset), int(bbox.y_offset)),
                           (int(bbox.x_offset + bbox.width), int(bbox.y_offset + bbox.height)), (0, 100, 200), 2)
             image_label = '%s %s' % (label, str(prob))
-            
+
             if bbox.y_offset < 40:
                 cv2.putText(image, image_label, (int(bbox.x_offset), int(bbox.y_offset) + int(bbox.height)), 0, 0.8, (0, 40, 255), 3)
             else:
