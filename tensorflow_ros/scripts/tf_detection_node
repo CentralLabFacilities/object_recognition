@@ -76,7 +76,7 @@ class TensorflowDetectionNode:
         self._bgr_image = None
         self.cv_image = None
 
-        self.recognition_threshold = 0.2
+        self.recognition_threshold = 0.09
 
         self.roi_path = "/tmp/"
         graph_r = rec_path + "/output_graph.pb"
@@ -186,6 +186,10 @@ class TensorflowDetectionNode:
             if sorted_result:
                 best_label = sorted_result[-1][0]
                 best_prob = sorted_result[-1][1]
+                print("1", best_label, best_prob)
+                #if len(sorted_result) >= 3:
+                #    print ("2", sorted_result[-2][0], sorted_result[-2][1])
+                #    print("3", sorted_result[-3][0], sorted_result[-3][1])
             #TODO: unknown probability hardcoded
             best = CategoryProbability(label="unknown", probability=self._unknown_prob)
             if best_prob > best.probability:

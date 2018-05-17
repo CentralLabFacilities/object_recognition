@@ -68,40 +68,40 @@ class Detector:
                 print "found ", self.get_label(self.classes[0][i]), " with score ", self.scores[0][i], "at: ", self.boxes[0][i]
 
         # filter double detected objects
-        num_objects = len(self.scores)
+        num_objects = len(scores)
         remove_objects = []
-        print("num objects: {}".format(num_objects))
         print scores
         for i in range(0, num_objects):
             for j in range(0, num_objects):
                 if not (i == j):
-                    print("i,j: {},{}".format(i,j))
                     detected_i = Object(classes[i], scores[i], boxes[i][1], boxes[i][3], boxes[i][0], boxes[i][2])
-                    detected_j = Object(classes[i], scores[i], boxes[i][1], boxes[i][3], boxes[i][0], boxes[i][2])
-                    if self.doubleTest(detected_j, detected_i) and j not in remove_objects:
+                    detected_j = Object(classes[j], scores[j], boxes[j][1], boxes[j][3], boxes[j][0], boxes[j][2])
+                    if self.doubleTest(detected_j, detected_i) and (j not in remove_objects):
                         remove_objects.append(j)
-                        print("remove double detected object {} with prob. {}".format(self.get_label(self.classes[j]),self.scores[j]))
+                        print("remove double detected object {} with prob. {}".format(self.get_label(classes[j]),scores[j]))
 
-        for j in range(0, len(remove_objects)):
-            self.scores.remove(j)
-            self.classes.remove(j)
-            self.boxes.remove(j)
+        # sort list (large indices first)
+        remove_objects = list(reversed(sorted(remove_objects)))
+        print("delete doubles: {}".format(remove_objects))
+        for i in range(0, len(remove_objects)):
+            j = remove_objects[i]
+            del scores[j]
+            del classes[j]
+            del boxes[j]
 
-        print scores
         return classes, scores, boxes
 
     def get_label(self, classId):
         return self.category_index[classId]['name']
 
-    # copied from image_recognition_util/evaluate.py
+    # copied from image_recognition_util/evaluate.py (diff: max_ratio=2.5, ignore labels
     def doubleTest(self, detected, other_detected):
         if (self.matchBoundingBoxes(detected, other_detected) and
-                    detected.label == other_detected.label and
                     detected.prob < other_detected.prob):
             return True
         return
 
-    def matchBoundingBoxes(self, detected, annotated, max_ratio=2):
+    def matchBoundingBoxes(self, detected, annotated, max_ratio=2.5):
 
         # Detected vars
         xmax_det = detected.bbox.xmax
@@ -135,8 +135,8 @@ class Detector:
         maxDistY = area_an * 0.5
         # alternatively match centroids of bboxes
         # or evaluate overlapping area of bboxes
-
         if (ratio < max_ratio):
+            print ratio
             return True
 
         if (self.inRange(xmin_det, xmin_an, maxDistX) and self.inRange(ymin_det, ymin_an, maxDistY)
