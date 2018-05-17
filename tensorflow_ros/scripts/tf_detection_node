@@ -76,6 +76,8 @@ class TensorflowDetectionNode:
         self._bgr_image = None
         self.cv_image = None
 
+        self.recognition_threshold = 0.2
+
         self.roi_path = "/tmp/"
         graph_r = rec_path + "/output_graph.pb"
         labels_r = rec_path + "/output_labels.txt"
@@ -193,7 +195,7 @@ class TensorflowDetectionNode:
             if (labels [i] == "reject"):
                 continue
             # threshold for recognition
-            if (scores[i] < 0.5):
+            if (scores[i] < self.recognition_threshold):
                 continue
 
             objectLocation = ObjectLocation()

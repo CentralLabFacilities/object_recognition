@@ -41,4 +41,5 @@ class Recognizer:
 
         # return sorted list
         sorted_result = sorted(result.items(), key=operator.itemgetter(1))
+        print(sorted_result[0])
         return sorted_result
