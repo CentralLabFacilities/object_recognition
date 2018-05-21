@@ -64,6 +64,12 @@ class TensorflowDetectionNode:
         self._do_detection = False  # Indicates whether a new request has been received and thus detection must
         # be performed
 
+        self.image_service_name = "/naoqi_driver/get_images"
+        if self.image_service_name in rosservice.get_service_list():
+            self._srv_image = rospy.ServiceProxy(self.image_service_name, rosservice.get_service_class_by_name(self.image_service_name))
+        else:
+            self._srv_image = None
+
         self.seg_service_name = "/segment"
         if self.seg_service_name in rosservice.get_service_list():
             self._srv_segment = rospy.ServiceProxy(self.seg_service_name, rosservice.get_service_class_by_name(self.seg_service_name))
@@ -85,9 +91,6 @@ class TensorflowDetectionNode:
         rospy.loginfo("show_results: {}".format(show_results))
         self._show_results = show_results
 
-        self._sub = rospy.Subscriber(image_topic, Image, self._image_callback)
-        rospy.loginfo("Listening to %s -- spinning .." % self._sub.name)
-
         rospy.loginfo("TensorflowDetectionNode initialized:")
         rospy.loginfo(" - graph_path=%s", graph_path)
         rospy.loginfo(" - labels_path=%s", labels_path)
@@ -104,15 +107,23 @@ class TensorflowDetectionNode:
         self.recognizer.load_graph(graph_r, labels_r)
         rospy.loginfo("recognition graph successfully loaded")
 
-    def _image_callback(self, msg):
-        """
-        Sensor_msgs/Image callback
-        :param msg: The image message
-        """
+    def _get_image_by_srv_call(self):
+        if not self._srv_image:
+            if self.image_service_name in rosservice.get_service_list():
+                self._srv_image = rospy.ServiceProxy(self.image_service_name,
+                                                 rosservice.get_service_class_by_name(self.image_service_name))
+            else:
+                rospy.logerr("Service %s not started!", self.image_service_name)
+                return False
+
+        msg = self._srv_image().color
         try:
             self.cv_image = self._bridge.imgmsg_to_cv2(msg, "bgr8")
         except CvBridgeError as e:
             rospy.logerr(e)
+            return False
+
+        return True
 
     def _detect_srv_callback(self, req):
         """ Callback function for the detection. It saves the image on a temporary location and sets _do_detection
@@ -127,8 +138,14 @@ class TensorflowDetectionNode:
             #error_msg = "Could not convert to opencv image: %s" % e
             #rospy.logerr(error_msg)
             #raise Exception(error_msg)
-            print("No image in request. Get image from rostopic.")
-            self._bgr_image = self.cv_image
+            print("No image in service request. Get image by service call.")
+
+            got_image = self._get_image_by_srv_call()
+            if not got_image:
+                return {"objectLocationList": [], "segmentationResult": False}
+            else:
+                self._bgr_image = self.cv_image
+
         size = self._bgr_image.shape[:2]
         self._size['height'] = size[0]
         self._size['width'] = size[1]
@@ -142,7 +159,6 @@ class TensorflowDetectionNode:
             else:
                 self.do_segmentation = False
                 rospy.logerr("Segmentation service client not found!")
-
 
         # Wait until the request has been processed and return the result
         r = rospy.Rate(1000.0)  # Not a problem to spin quickly
