@@ -2,6 +2,8 @@ import rospy
 import rostopic
 import rosservice
 
+import cv2
+
 from qt_gui.plugin import Plugin
 
 from python_qt_binding.QtWidgets import * 
@@ -10,7 +12,8 @@ from python_qt_binding.QtCore import *
 
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
-from object_tracking_msgs.msg import CategoryProbability
+from object_tracking_msgs.msg import ObjectLocation, Hypothesis, ObjectShape, CategoryProbability
+from object_tracking_msgs.srv import DetectObjects, DetectObjectsRequest
 
 from image_widget_test_gui import ImageWidget
 from dialogs import option_dialog, warning_dialog, info_dialog
@@ -50,12 +53,20 @@ class TestPlugin(Plugin):
         self._info.setText("Draw a rectangle on the screen to perform recognition of that ROI")
         layout.addWidget(self._info)
 
+        self._detect_button = QPushButton("Detect Objects")
+        self._detect_button.clicked.connect(self.detect_button_callback)
+        grid_layout.addWidget(self._detect_button, 2, 2)
+
         # Bridge for opencv conversion
         self.bridge = CvBridge()
 
         # Set subscriber and service to None
         self._sub = None
         self._srv = None
+
+        self._srv_detect = None
+
+        self.cv_image = None
 
     def recognize_srv_call(self, roi_image):
         """
@@ -84,6 +95,34 @@ class TestPlugin(Plugin):
                               text_array)  # Show all results in a dropdown
 
 
+    def detect_button_callback(self):
+        """
+        Callback for detect button.
+        :return:
+        """
+        self._create_detect_service_client()
+
+        if self._srv_detect == None:
+            print("service detect unavailable")
+            return
+
+        self.detect_srv_call(self.cv_image)
+
+    def detect_srv_call(self, image):
+        """
+        Method that calls the DetectObjects.srv
+        :param roi_image: Selected roi_image by the user
+        """
+        imageReq = DetectObjectsRequest()
+        imageReq.image = self.bridge.cv2_to_imgmsg(image, "bgr8")
+        imageReq.doSegmentation = False
+
+        try:
+            result = self._srv_detect(imageReq)
+        except Exception as e:
+            warning_dialog("Service Exception", str(e))
+            return
+
     def image_roi_callback(self, roi_image):
         """
         Callback triggered when the user has drawn an ROI on the image
@@ -105,11 +144,11 @@ class TestPlugin(Plugin):
         :param msg: The image message
         """
         try:
-            cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+            self.cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         except CvBridgeError as e:
             rospy.logerr(e)
 
-        self._image_widget.set_image(cv_image)
+        self._image_widget.set_image(self.cv_image)
 
     def trigger_configuration(self):
         """
@@ -142,6 +181,17 @@ class TestPlugin(Plugin):
         self._sub = rospy.Subscriber(topic_name, Image, self._image_callback)
         rospy.loginfo("Listening to %s -- spinning .." % self._sub.name)
         self._widget.setWindowTitle("Test plugin, listening to (%s)" % self._sub.name)
+
+    def _create_detect_service_client(self):
+        srv_name = "/detect"
+
+        if self._srv_detect:
+            self._srv_detect.close()
+
+        if srv_name in rosservice.get_service_list():
+            rospy.loginfo("Creating proxy for service '%s'" % srv_name)
+            self._srv_detect = rospy.ServiceProxy(srv_name, rosservice.get_service_class_by_name(srv_name))
+
 
     def _create_service_client(self, srv_name):
         """
