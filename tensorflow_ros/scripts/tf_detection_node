@@ -2,30 +2,26 @@
 
 # System
 import os
-import operator
 import sys
+
+import time
 
 # ROS
 import rospy
 import rosservice
 
-from sensor_msgs.msg import Image
 
 # OpenCV
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
 
-import numpy as np
-
 import datetime
 import uuid
 
 # object recognition
-import object_tracking_msgs
 from object_tracking_msgs.srv import DetectObjects
 from object_tracking_msgs.msg import ObjectLocation, Hypothesis, ObjectShape
 from object_tracking_msgs.msg import CategoryProbability
-from image_recognition_util import image_writer_test_gui
 from tensorflow_ros import detector
 from tensorflow_ros import recognizer
 
@@ -176,6 +172,7 @@ class TensorflowDetectionNode:
 
         if self._bgr_image is not None:
             self.show_image(self._bgr_image)
+            time.sleep(0.05)
 
         if not self._do_detection:
             return
