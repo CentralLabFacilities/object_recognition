@@ -47,8 +47,6 @@ class TensorflowDetectionNode:
             sys.exit(err_msg)
 
         self._unknown_prob = 0.1
-        self.do_segmentation = False
-        self.segmentation_result = False
 
         #init detector
         self.detector = detector.Detector(num_classes, detection_threshold)
@@ -65,12 +63,6 @@ class TensorflowDetectionNode:
             self._srv_image = rospy.ServiceProxy(self.image_service_name, rosservice.get_service_class_by_name(self.image_service_name))
         else:
             self._srv_image = None
-
-        self.seg_service_name = "/segment"
-        if self.seg_service_name in rosservice.get_service_list():
-            self._srv_segment = rospy.ServiceProxy(self.seg_service_name, rosservice.get_service_class_by_name(self.seg_service_name))
-        else:
-            self._srv_segment = None
 
         self._filename = "/tmp/tf_obj_detect.jpg"  # Temporary file name
         self._size = {'width': 0, 'height': 0}
@@ -138,7 +130,7 @@ class TensorflowDetectionNode:
 
             got_image = self._get_image_by_srv_call()
             if not got_image:
-                return {"objectLocationList": [], "segmentationResult": False}
+                return {"objectLocationList": []}
             else:
                 self._bgr_image = self.cv_image
 
@@ -147,23 +139,15 @@ class TensorflowDetectionNode:
         self._size['width'] = size[1]
         self._objectLocationList = []
         self._do_detection = True
-        self.do_segmentation = req.doSegmentation
-        print("do segmentation: {}".format(self.do_segmentation))
-        if not self._srv_segment:
-            if self.seg_service_name in rosservice.get_service_list():
-                self._srv_segment = rospy.ServiceProxy(self.seg_service_name, rosservice.get_service_class_by_name(self.seg_service_name))
-            else:
-                self.do_segmentation = False
-                rospy.logerr("Segmentation service client not found!")
 
         # Wait until the request has been processed and return the result
         r = rospy.Rate(1000.0)  # Not a problem to spin quickly
         while not rospy.is_shutdown():
             if not self._do_detection:
-                detectRes = {"objectLocationList": self._objectLocationList, "segmentationResult": self.segmentation_result}
+                detectRes = {"objectLocationList": self._objectLocationList}
                 return detectRes
         # Return an empty result if rospy has been shutdown
-        return {"objectLocationList": [], "segmentationResult": False}
+        return {"objectLocationList": []}
 
     def update(self):
         """ Do the actual work: if _do_detection is True, it retrieves the saved image and tries to classify it.
@@ -235,41 +219,6 @@ class TensorflowDetectionNode:
         # show results
         if (self._show_results):
             self.visualize_bounding_boxes(self._objectLocationList, self._bgr_image)
-
-        # do segmentation
-        if (self.do_segmentation):
-
-            # depth lookup
-            depthLookupResult = []
-            for obj in self._objectLocationList:
-                objectShape = ObjectShape()
-                objectShape.bounding_box = obj.bounding_box
-                objectShape.hypotheses = obj.hypotheses
-                objectShape.name = obj.name
-
-                scale_factor = 0.001  # rgb->depth scale factor (depthLookup: 2.0, why?)
-                width_factor = 1.3
-                # estimate 3d location by offset of 2d image center (rgb and depth camera coordinate frames are slightly shifted!)
-                x_shift = 0.09  # urdf_val * 3
-                y_shift = -0.05  # urdf_val
-                objectShape.center.x = (obj.bounding_box.x_offset - width / 2) * scale_factor + x_shift
-                objectShape.center.y = (obj.bounding_box.y_offset - height / 2) * scale_factor + y_shift
-                objectShape.center.z = 0.5
-                objectShape.width = obj.bounding_box.width * scale_factor * width_factor
-                objectShape.height = obj.bounding_box.height * scale_factor * width_factor
-                objectShape.depth = 0.7
-                depthLookupResult.append(objectShape)
-
-            print depthLookupResult
-            # call segmentation
-            try:
-                seg_res = self._srv_segment(depthLookupResult).done
-                print(seg_res)
-                self.segmentation_result = seg_res
-            except Exception as e:
-                rospy.logerr("Exception in segmentation service call: ")
-                self.segmentation_result = False
-            self.do_segmentation = False
 
         self._do_detection = False
 
