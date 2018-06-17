@@ -184,7 +184,10 @@ class EvaluateNet:
             i = i*0.02
             correct = sum((p > i) for p in dp_correct)
             wrong = sum((p > i) for p in dp_wrong)
-            ratio = correct / wrong
+            if wrong is not 0 and wrong is not None:
+                ratio = correct / wrong
+            else:
+                ratio = correct
             if (ratio > bestRatio):
                 print(correct, wrong)
                 bestRatio = ratio
@@ -200,7 +203,10 @@ class EvaluateNet:
             i = i*0.02
             correct = sum((p > i) for p in rp_correct)
             wrong = sum((p > i) for p in rp_wrong)
-            ratio = correct / wrong
+            if wrong is not 0 and wrong is not None:
+                ratio = correct / wrong
+            else:
+                ratio = correct
             if (ratio > bestRatio):
                 print(correct, wrong)
                 bestRatio = ratio
