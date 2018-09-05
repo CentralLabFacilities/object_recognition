@@ -4,6 +4,7 @@
 import os
 import operator
 import sys
+import time
 
 # ROS
 import rospy
@@ -23,6 +24,7 @@ from object_tracking_msgs.srv import Classify2D
 from vision_msgs.msg import Classification2D, ObjectHypothesis
 
 from image_recognition_util import image_writer_test_gui
+from tensorflow_ros import recognizer
 
 
 class TensorflowObjectRecognition:
@@ -41,6 +43,7 @@ class TensorflowObjectRecognition:
             sys.exit(err_msg)
 
         self._bridge = CvBridge()
+        self.recognizer = recognizer.Recognizer()
         self._classify_srv = rospy.Service('classify', Classify2D, self._classify_srv_callback)
         self._do_recognition = False  # Indicates whether a new request has been received and thus recognition must
         # be performed
@@ -57,23 +60,19 @@ class TensorflowObjectRecognition:
         rospy.loginfo(" - save_images_folder=%s", save_images_folder)
 
         """1. Create a graph from saved GraphDef file """
-        with open(graph_path, 'rb') as f:
-            graph_def = tf.GraphDef()
-            graph_def.ParseFromString(f.read())
-            _ = tf.import_graph_def(graph_def, name='')
+        self.recognizer.load_graph(graph_path, labels_path)
 
     def _classify_srv_callback(self, req):
         """ Callback function for the recognize. It saves the image on a temporary location and sets _do_recognition
         to True. Subsequently, it waits until the image has been processed (i.e., until _do_recognition is False again)
         and then returns the result
-        :param req: object_tracking_msgs.srv.Classify2DRequest
-        :return: object_tracking_msgs.srv.Classify2DResponse
+        :param req: image_recognition_msgs.srv.RecognizeRequest
+        :return: image_recognition_msgs.srv.RecognizeResponse
         """
 
         self._classifications = []
 
         for i in range(len(req.images)):
-            """1. convert and save image """
             try:
                 self._bgr_image = self._bridge.imgmsg_to_cv2(req.images[i], "bgr8")
             except CvBridgeError as e:
@@ -91,58 +90,15 @@ class TensorflowObjectRecognition:
             size = self._bgr_image.shape[:2]  # For now, we assume the entire image is the ROI
             self._size['height'] = size[0]
             self._size['width'] = size[1]
+            self._recognitions = []
+            self._do_recognition = True
 
-            # if rospy has been shutdown return empty list
+            # Wait until the request has been processed and return the result
+            r = rospy.Rate(1000.0)  # Not a problem to spin quickly
             if rospy.is_shutdown():
                 return {"classifications": []}
-
-            """2. Open tf session"""
-            with tf.Session() as sess:
-
-                """3. Get result tensor"""
-                result_tensor = sess.graph.get_tensor_by_name("final_result:0")
-
-                """4. Open Image and perform prediction"""
-                predictions = []
-                try:
-                    with open(self._filename, 'rb') as f:
-                        predictions = sess.run(result_tensor, {'DecodeJpeg/contents:0': f.read()})
-                        predictions = np.squeeze(predictions)
-                except Exception as e:
-                    rospy.logerr("Failed to run tensorflow session: %s", e)
-
-                """5. Open output_labels and construct dict from result"""
-                result = {}
-                with open(self._models_path, 'rb') as f:
-                    labels = f.read().split("\n")
-                    result = dict(zip(labels, predictions))
-                    print predictions
-                    print result
-
-            # Sort the results
-            sorted_result = sorted(result.items(), key=operator.itemgetter(1))
-
-            # self._recognition.label = sorted_result[-1][0].split('\t')[1]
-            classification = Classification2D()
-            classification.header.stamp = rospy.Time.now()
-            classification.header.frame_id = ""
-
-            classification.results = []
-            for res in reversed(sorted_result):
-                hypothesis = ObjectHypothesis(id=res[0], score=res[1])
-                classification.results.append(hypothesis)
-
-            self._classifications.append(classification)
-
-            if sorted_result:
-                best_label = sorted_result[-1][0]
-                best_prob = sorted_result[-1][1]
-
-                rospy.loginfo("Best recognition result: {} with probability: {}".format(best_label, best_prob))
-
-                # Write unverified annotated image
-                if self._save_images_folder:
-                    image_writer_test_gui.write_annotated(self._save_images_folder, self._bgr_image, best_label, False)
+            while self._do_recognition:
+                time.sleep(5)
 
         return {"classifications": self._classifications}
 
@@ -153,9 +109,36 @@ class TensorflowObjectRecognition:
         if not self._do_recognition:
             return
 
+        """2. Recognize"""
+        try:
+            # ToDo: directly in memory, saves file operations
+            sorted_result = self.recognizer.recognize(self._filename) # best score first
+        except Exception as e:
+            rospy.logerr("Failed to run tensorflow session: %s", e)
 
+        classification = Classification2D()
+        classification.header.stamp = rospy.Time.now()
+        classification.header.frame_id = ""
+
+        classification.results = []
+        for res in reversed(sorted_result):
+            hypothesis = ObjectHypothesis(id=res[0], score=res[1])
+            classification.results.append(hypothesis)
+
+        self._classifications.append(classification)
+
+        if sorted_result:
+            best_label = sorted_result[-1][0]
+            best_prob = sorted_result[-1][1]
+
+            rospy.loginfo("Best recognition result: {} with probability: {}".format(best_label, best_prob))
+
+            # Write unverified annotated image
+            if self._save_images_folder:
+                image_writer_test_gui.write_annotated(self._save_images_folder, self._bgr_image, str(best_label), False)
 
         self._do_recognition = False
+
 
 if __name__ == '__main__':
 

@@ -87,7 +87,7 @@ class TestPlugin(Plugin):
             if r.score > best.score:
                 best = r
 
-        self._image_widget.add_detection(r.roi.x_offset, r.roi.y_offset, r.roi.width, r.roi.height, best.label)
+        self._image_widget.add_detection(0, 0, 1, 1, str(best.id))
 
         if text_array:
             option_dialog("Classification results (Unknown probability=%.2f)" %
