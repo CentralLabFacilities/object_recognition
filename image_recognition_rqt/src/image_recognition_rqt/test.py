@@ -15,8 +15,9 @@ from object_tracking_msgs.msg import CategoryProbability
 from image_widget_test_gui import ImageWidget
 from dialogs import option_dialog, warning_dialog, info_dialog
 
-from object_tracking_msgs.srv import Recognize
-_SUPPORTED_SERVICES = ["image_recognition_msgs/Recognize"]
+from object_tracking_msgs.srv import Classify2D
+from vision_msgs.msg import ObjectHypothesis, Classification2D
+_SUPPORTED_SERVICES = ["object_tracking_msgs/Classify2D"]
 
 
 class TestPlugin(Plugin):
@@ -57,31 +58,41 @@ class TestPlugin(Plugin):
         self._sub = None
         self._srv = None
 
-    def recognize_srv_call(self, roi_image):
+        self._unknown_probability = 0.1
+
+
+    def classify_srv_call(self, roi_image):
         """
-        Method that calls the Recognize.srv
+        Method that calls the Classify2D.srv
         :param roi_image: Selected roi_image by the user
         """
         try:
-            result = self._srv(image=self.bridge.cv2_to_imgmsg(roi_image, "bgr8"))
+            images = []
+            image = self.bridge.cv2_to_imgmsg(roi_image, "bgr8")
+            images.append(image)
+            result = self._srv(images)
         except Exception as e:
             warning_dialog("Service Exception", str(e))
             return
 
-        for r in result.recognitions:
-            text_array = []
-            best = CategoryProbability(label="unknown", probability=r.categorical_distribution.unknown_probability)
-            for p in r.categorical_distribution.probabilities:
-                text_array.append("%s: %.2f" % (p.label, p.probability))
-                if p.probability > best.probability:
-                    best = p
+        # we send one image, so we get max. one result
+        if len(result.classifications) == 0:
+            return
 
-            self._image_widget.add_detection(r.roi.x_offset, r.roi.y_offset, r.roi.width, r.roi.height, best.label)
+        c = result.classifications[0]
+        text_array = []
+        best = ObjectHypothesis(id=0, score=self._unknown_probability) # 0 -> unknown
+        for r in c.results:
+            text_array.append("%s: %.2f" % (r.id, r.score))
+            if r.score > best.score:
+                best = r
 
-            if text_array:
-                option_dialog("Classification results (Unknown probability=%.2f)" %
-                              r.categorical_distribution.unknown_probability,
-                              text_array)  # Show all results in a dropdown
+        self._image_widget.add_detection(r.roi.x_offset, r.roi.y_offset, r.roi.width, r.roi.height, best.label)
+
+        if text_array:
+            option_dialog("Classification results (Unknown probability=%.2f)" %
+                          self._unknown_probability,
+                          text_array)  # Show all results in a dropdown
 
 
     def image_roi_callback(self, roi_image):
@@ -94,8 +105,8 @@ class TestPlugin(Plugin):
                            "Please first specify a service via the options button (top-right gear wheel)")
             return
 
-        if self._srv.service_class == Recognize:
-            self.recognize_srv_call(roi_image)
+        if self._srv.service_class == Classify2D:
+            self.classify_srv_call(roi_image)
         else:
             warning_dialog("Unknown service class", "Service class is unkown!")
 
@@ -145,7 +156,7 @@ class TestPlugin(Plugin):
 
     def _create_service_client(self, srv_name):
         """
-        Method that creates a client service proxy to call either the GetFaceProperties.srv or the Recognize.srv
+        Method that creates a client service proxy to call either the GetFaceProperties.srv or the Classify2D.srv
         :param srv_name:
         """
         if self._srv:

@@ -4,6 +4,7 @@ project(tensorflow_ros)
 find_package(catkin REQUIRED COMPONENTS
   rospy
   object_tracking_msgs
+  vision_msgs
   image_recognition_util
 )
 
