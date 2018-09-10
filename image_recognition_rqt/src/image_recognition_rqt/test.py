@@ -1,3 +1,6 @@
+import os
+import sys
+
 import rospy
 import rostopic
 import rosservice
@@ -10,10 +13,9 @@ from python_qt_binding.QtCore import *
 
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
-from object_tracking_msgs.msg import CategoryProbability
 
 from image_widget_test_gui import ImageWidget
-from dialogs import option_dialog, warning_dialog, info_dialog
+from dialogs import option_dialog, warning_dialog
 
 from object_tracking_msgs.srv import Classify2D
 from vision_msgs.msg import ObjectHypothesis, Classification2D
@@ -60,6 +62,36 @@ class TestPlugin(Plugin):
 
         self._unknown_probability = 0.1
 
+        self.label_path = ""
+
+        self._edit_label_path_button = QPushButton("Edit label path")
+        self._edit_label_path_button.clicked.connect(self._get_label_path)
+        layout.addWidget(self._edit_label_path_button)
+
+        self._label_path_edit = QLineEdit()
+        self._label_path_edit.setDisabled(True)
+        layout.addWidget(self._label_path_edit)
+
+
+    def _set_label_path(self, path):
+        """
+        Set the image directory
+        :param path: image dir
+        """
+        if not path:
+            path = ""
+        else:
+            path = str(path).split("\'")[1]
+
+        self.label_path = path
+        self._label_path_edit.setText("Read labels from %s" % path)
+        self.read_labels()
+
+    def _get_label_path(self):
+        """
+        Get and set image directory with use of QFileDialog GUI
+        """
+        self._set_label_path(QFileDialog.getOpenFileName(self._widget, "Select images directory", "/", "Text files (*.txt)"))
 
     def classify_srv_call(self, roi_image):
         """
@@ -82,8 +114,9 @@ class TestPlugin(Plugin):
         c = result.classifications[0]
         text_array = []
         best = ObjectHypothesis(id=0, score=self._unknown_probability) # 0 -> unknown
+
         for r in c.results:
-            text_array.append("%s: %.2f" % (r.id, r.score))
+            text_array.append("%s: %.2f" % (self.labels[r.id], r.score))
             if r.score > best.score:
                 best = r
 
@@ -105,6 +138,11 @@ class TestPlugin(Plugin):
                            "Please first specify a service via the options button (top-right gear wheel)")
             return
 
+        if self.label_path == "":
+            warning_dialog("No object labels defined!",
+                           "Please load a label file first.")
+            return
+
         if self._srv.service_class == Classify2D:
             self.classify_srv_call(roi_image)
         else:
@@ -121,6 +159,10 @@ class TestPlugin(Plugin):
             rospy.logerr(e)
 
         self._image_widget.set_image(cv_image)
+
+    def read_labels(self):
+        with open(self.label_path, 'rb') as f:
+            self.labels = f.read().split("\n")
 
     def trigger_configuration(self):
         """
