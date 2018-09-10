@@ -45,7 +45,7 @@ class ImageWidget(QWidget):
         """
         super(ImageWidget, self).__init__(parent)
         self._cv_image = None
-	self._bg_image = None
+        self._bg_image = None
         self._qt_image = QImage()
         self.pMOG2 = cv2.createBackgroundSubtractorMOG2(500, 16, True)
 
@@ -53,12 +53,12 @@ class ImageWidget(QWidget):
 
         self.dragging = False
         self.drag_offset = QPoint()
-	self.image_callback = image_callback
+        self.image_callback = image_callback
 
         self.detections = []
-	self._clear_on_click = clear_on_click
+        self._clear_on_click = clear_on_click
         self.bbox = None
-	self.mask = None
+        self.mask = None
 
 
     def paintEvent(self, event):
@@ -155,9 +155,9 @@ class ImageWidget(QWidget):
 	    self.mask = mask1
 	    self.bbox = cv2.boundingRect(contours[largest_contour_index])
 	    self.bbox = (self.bbox[0], self.bbox[0] + self.bbox[2], self.bbox[1], self.bbox[1] + self.bbox[3])
-	    cv2.rectangle(image, (self.bbox[0], self.bbox[2]), (self.bbox[1], self.bbox[3]), (0, 0, 255))
+	    #cv2.rectangle(image, (self.bbox[0], self.bbox[2]), (self.bbox[1], self.bbox[3]), (0, 0, 255))
 
-        return image
+        return
 
     def get_image(self):
         return self._cv_image
@@ -175,15 +175,36 @@ class ImageWidget(QWidget):
 
         return self._cv_image[y:y + height, x:x + width]
 
-    def set_image(self, image):
+    def set_image(self, img, bboxes, labels):
         """
         Sets an opencv image to the widget
         :param image: The opencv image
         """
+        image = img
         self._cv_image = copy.copy(image)
+
+        if (bboxes is not None and labels is not None):
+            # draw boxes for current annotations
+            for i in range (0,len(bboxes)):
+                bbox = bboxes[i]
+                label = labels[i]
+                color = (0, 0, 255)
+                cv2.rectangle(image, (bbox[0], bbox[2]),
+                          (bbox[1], bbox[3]), color, 2)
+                image_label = '%s' % (label)
+                cv2.putText(image, image_label, (bbox[0], bbox[2]), 0, 0.6,
+                        color,
+                        1)
+        # for lazy annotation:
+        if (bboxes is not None and labels is None):
+            for i in range (0,len(bboxes)):
+                bbox = bboxes[i]
+                color = (0, 0, 255)
+                cv2.rectangle(image, (bbox[0], bbox[2]),
+                          (bbox[1], bbox[3]), color, 1)
         self._qt_image = _convert_cv_to_qt_image(image)
         self.update()
-	return image
+	return self._cv_image
 
     def get_mask(self):
 	return self.mask

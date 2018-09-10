@@ -14,16 +14,14 @@ import cv2
 import datetime
 import re
 import rosservice
+import time
 
 from image_widget import ImageWidget
-from dialogs import option_dialog, warning_dialog
+from dialogs import option_dialog, info_dialog, warning_dialog, number_dialog
 
-from object_tracking_msgs.msg import Annotation
 from image_recognition_util import image_writer
-from sensor_msgs.msg import RegionOfInterest
 
 _SUPPORTED_SERVICES = ["object_tracking_msgs/Annotate"]
-
 
 def _sanitize(label):
     """
@@ -49,17 +47,38 @@ class AnnotationPlugin(Plugin):
         self._widget = QWidget()
         context.add_widget(self._widget)
         self._widget.resize(800,1000)
-        
         # Layout and attach to widget
         layout = QVBoxLayout()  
         self._widget.setLayout(layout)
 
-        self._image_widget = ImageWidget(self._widget, self._roi_callback, clear_on_click=True)
+        self._image_widget = ImageWidget(self._widget, self._image_callback)
         layout.addWidget(self._image_widget)
 
         # Input field
         grid_layout = QGridLayout()
         layout.addLayout(grid_layout)
+
+        grid_layout.addWidget(QLabel("Dilation size"), 1, 1)
+
+        self._sliderDil = QSlider(Qt.Horizontal)
+        self._sliderDil.setMinimum(1)
+        self._sliderDil.setMaximum(15)
+        self._sliderDil.setValue(5)
+        self._sliderDil.setTickPosition(QSlider.TicksBelow)
+        self._sliderDil.setTickInterval(1)
+
+        grid_layout.addWidget(self._sliderDil, 1, 2)
+
+        grid_layout.addWidget(QLabel("Erosion size"), 1, 3)
+
+        self._sliderEros = QSlider(Qt.Horizontal)
+        self._sliderEros.setMinimum(1)
+        self._sliderEros.setMaximum(15)
+        self._sliderEros.setValue(5)
+        self._sliderEros.setTickPosition(QSlider.TicksBelow)
+        self._sliderEros.setTickInterval(1)
+
+        grid_layout.addWidget(self._sliderEros, 1, 4)
 
         self._edit_path_button = QPushButton("Edit path")
         self._edit_path_button.clicked.connect(self._get_output_directory)
@@ -86,9 +105,13 @@ class AnnotationPlugin(Plugin):
         self._edit_labels_button.clicked.connect(self._add_label)
         grid_layout.addWidget(self._edit_labels_button, 3, 1)
 
-        self._save_button = QPushButton("Annotate again!")
-        self._save_button.clicked.connect(self.annotate_again_clicked)
-        grid_layout.addWidget(self._save_button, 3,3)
+        self._save_button = QPushButton("START")
+        self._save_button.clicked.connect(self.create_dataset_clicked)
+        grid_layout.addWidget(self._save_button, 3, 3)
+
+        self._test_button = QRadioButton("TestSet")
+        self._test_button.setChecked(False)
+        grid_layout.addWidget(self._test_button, 3, 4)
 
         # Bridge for opencv conversion
         self.bridge = CvBridge()
@@ -97,13 +120,14 @@ class AnnotationPlugin(Plugin):
         self._sub = None
         self._srv = None
 
-        self.labels = []
+        self.interval = 3
+        self.numImg = 0
+	self.counter = 0
+        self.save = False
         self.label = ""
         self.output_directory = ""
-
-
-
-###################
+        self.cls_id = None
+        self.save_every_n_frames = 5
 
 
     def classChange(self):
@@ -113,45 +137,48 @@ class AnnotationPlugin(Plugin):
         self.numImg = cls[1]
         self._imgNum_label.setText(str(self.numImg))
 
-    def annotate_again_clicked(self):
+
+    def create_dataset_clicked(self):
         """
         Triggered when button clicked
         """
-	image = self._image_widget.get_image()
-	bbox = self._image_widget.get_bbox()
-        self.store_image(image, bbox)
+        if not self.labels:
+            warning_dialog("No labels specified!", "Please first specify some labels using the 'Edit labels' button")
+            return
 
-    def annotate(self, image, bbox):
-        """
-        Create an annotation
-        :param image: The image we want to annotate
-        """
-        #self.annotate_srv(image)
-	#print(bbox)
-        self.store_image(image, bbox)
+        if self.save:
+            self._save_button.setText("START")
+            self.save = False
+            self.labels[self.cls_id][1] = self.numImg
+        else:
+            self._save_button.setText("STOP")
+            self.save = True
 
-    def annotate_srv(self, roi_image):
-        """
-        Call the selected Annotate.srv
-        :param roi_image: The full opencv image we want to annotate
-        """
-        if roi_image is not None and self.label is not None and self._srv is not None:
-            height, width = roi_image.shape[:2]
-            try:
-                self._srv(image=self.bridge.cv2_to_imgmsg(roi_image, "bgr8"),
-                          annotations=[Annotation(label=self.label,
-                                                  roi=RegionOfInterest(x_offset=0, y_offset=0,
-                                                                       width=width, height=height))])
-            except Exception as e:
-                warning_dialog("Service Exception", str(e))
 
-    def store_image(self, image, bbox):
+
+#    def annotate(self, image, bbox):
+#        """
+#        Create an annotation
+#        :param image: The image we want to annotate
+#        """
+#        self.annotate_srv(image, bbox)
+#        self.store_image(image, bbox)
+
+
+    def store_image(self, image, bbox, cls_id, mask):
         """
         Store the image
         :param image: Image we would like to store
         """
         if image is not None and self.label is not None and self.output_directory is not None:
-            image_writer.write_annotated(self.output_directory, image, None, self.label, None, bbox, True)
+            ids = []
+            labels = []
+            bboxes = []
+            ids.append(self.cls_id)
+            labels.append(self.label)
+            bboxes.append(bbox)
+            image_writer.write_roi(self.output_directory, image, self.label, bbox)
+            image_writer.write_annotated(self.output_directory, image, mask, labels, ids, bboxes, self._test_button.isChecked())
 
     def _get_output_directory(self):
         """
@@ -217,37 +244,31 @@ class AnnotationPlugin(Plugin):
             labels.append(label)
         return labels
 
-    def _roi_callback(self, msg):
-        """
-        Called when a new sensor_msgs/Image is coming in
-        :param msg: The image messaeg
-        """
-
-	self._image_widget.get_roi()
-        self.image = self._image_widget.get_image()
-
-	if not self.labels:
-            warning_dialog("No labels specified!", "Please first specify some labels using the 'Edit labels' button")
-            return
-
-        #height, width = roi_image.shape[:2]
-
-	self.annotate(self._image_widget.get_image(), self._image_widget.get_bbox())
-
-
     def _image_callback(self, msg):
         """
         Called when a new sensor_msgs/Image is coming in
         :param msg: The image messaeg
         """
+
         try:
             cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+            dil_size = self._sliderDil.value()
+            eros_size = self._sliderEros.value()
+            self._image_widget.calc_bbox(cv_image, dil_size, eros_size)
+            bboxes = []
+            bboxes.append(self._image_widget.get_bbox())
+            self._image_widget.set_image(cv_image,bboxes,None)
+
+            if self.save:
+                if self.counter == self.save_every_n_frames:
+                    self.numImg += 1
+                    self._imgNum_label.setText(str(self.numImg))
+                    self.store_image(self._image_widget.get_image(), self._image_widget.get_bbox(), self.cls_id, self._image_widget.get_mask())
+                    self.counter = 0
+                else:
+                    self.counter += 1
         except CvBridgeError as e:
             rospy.logerr(e)
-
-        self._image_widget.set_image(cv_image)    
-
-
 
     def trigger_configuration(self):
         """
@@ -331,5 +352,3 @@ class AnnotationPlugin(Plugin):
         #self._set_labels(labels)
         self._create_service_client(str(instance_settings.value("service_name", "/image_recognition/my_service")))
         self._create_subscriber(str(instance_settings.value("topic_name", "/xtion/rgb/image_raw")))
-
-
