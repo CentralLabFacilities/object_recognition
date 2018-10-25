@@ -23,7 +23,7 @@ install(FILES plugin.xml
 
 install(PROGRAMS
   scripts/annotation_gui
-  scripts/annotation_testset_gui
+  scripts/lazy_annotation_gui
   scripts/test_gui
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
