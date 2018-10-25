@@ -62,36 +62,7 @@ class TestPlugin(Plugin):
 
         self._unknown_probability = 0.1
 
-        self.label_path = ""
-
-        self._edit_label_path_button = QPushButton("Edit label path")
-        self._edit_label_path_button.clicked.connect(self._get_label_path)
-        layout.addWidget(self._edit_label_path_button)
-
-        self._label_path_edit = QLineEdit()
-        self._label_path_edit.setDisabled(True)
-        layout.addWidget(self._label_path_edit)
-
-
-    def _set_label_path(self, path):
-        """
-        Set the image directory
-        :param path: image dir
-        """
-        if not path:
-            path = ""
-        else:
-            path = str(path).split("\'")[1]
-
-        self.label_path = path
-        self._label_path_edit.setText("Read labels from %s" % path)
-        self.read_labels()
-
-    def _get_label_path(self):
-        """
-        Get and set image directory with use of QFileDialog GUI
-        """
-        self._set_label_path(QFileDialog.getOpenFileName(self._widget, "Select images directory", "/", "Text files (*.txt)"))
+        self.id_label_list = []
 
     def classify_srv_call(self, roi_image):
         """
@@ -116,7 +87,11 @@ class TestPlugin(Plugin):
         best = ObjectHypothesis(id=0, score=self._unknown_probability) # 0 -> unknown
 
         for r in c.results:
-            text_array.append("%s: %.2f" % (self.labels[r.id], r.score))
+            if len(self.id_label_list) >= r.id:
+                print(self.id_label_list.get((str(r.id))))
+                text_array.append("%s: %.2f" % (self.id_label_list.get(str(r.id)), r.score))
+            else:
+                text_array.append("%s: %.2f" % ("no_label", r.score))
             if r.score > best.score:
                 best = r
 
@@ -138,11 +113,6 @@ class TestPlugin(Plugin):
                            "Please first specify a service via the options button (top-right gear wheel)")
             return
 
-        if self.label_path == "":
-            warning_dialog("No object labels defined!",
-                           "Please load a label file first.")
-            return
-
         if self._srv.service_class == Classify2D:
             self.classify_srv_call(roi_image)
         else:
@@ -159,10 +129,6 @@ class TestPlugin(Plugin):
             rospy.logerr(e)
 
         self._image_widget.set_image(cv_image)
-
-    def read_labels(self):
-        with open(self.label_path, 'rb') as f:
-            self.labels = f.read().split("\n")
 
     def trigger_configuration(self):
         """
@@ -207,6 +173,10 @@ class TestPlugin(Plugin):
         if srv_name in rosservice.get_service_list():
             rospy.loginfo("Creating proxy for service '%s'" % srv_name)
             self._srv = rospy.ServiceProxy(srv_name, rosservice.get_service_class_by_name(srv_name))
+            # get id-label mapping
+            if rospy.has_param('object_labels'):
+                self.id_label_list = rospy.get_param('object_labels')
+                print("get id-label dict by rosparam")
 
     def shutdown_plugin(self):
         """

@@ -20,6 +20,7 @@ class Recognizer:
             _ = tf.import_graph_def(graph_def, name='')
             with open(label_path, 'rb') as f:
                 self.labels = f.read().split("\n")
+        return self.labels
 
 
     def recognize(self,filename):

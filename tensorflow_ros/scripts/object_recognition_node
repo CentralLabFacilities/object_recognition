@@ -60,7 +60,11 @@ class TensorflowObjectRecognition:
         rospy.loginfo(" - save_images_folder=%s", save_images_folder)
 
         """1. Create a graph from saved GraphDef file """
-        self.recognizer.load_graph(graph_path, labels_path)
+        label_list = self.recognizer.load_graph(graph_path, labels_path)
+
+        id_list = [str(i) for i in range(0,len(label_list))]
+        id_label_dict = dict(zip(id_list, label_list))
+        rospy.set_param('object_labels', id_label_dict)
 
     def _classify_srv_callback(self, req):
         """ Callback function for the recognize. It saves the image on a temporary location and sets _do_recognition
